@@ -159,8 +159,8 @@ const Search: React.FC = () => {
       style={{ backgroundImage: `url('https://i.imgur.com/G20z4MI.png')` }}
     >
       {/* Google Logo - Click to go home */}
-      <a href="/" className="mt-10 mb-4">
-        <img src="https://i.imgur.com/QTNsUY1.png" alt="Google Logo" className="w-60 cursor-pointer" />
+      <a href="/" className="mt-5 mb-10">
+        <img src="https://i.imgur.com/QTNsUY1.png" alt="Google Logo" className="w-120 cursor-pointer" />
       </a>
 
       <div className="w-full max-w-2xl">
