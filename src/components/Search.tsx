@@ -25,8 +25,7 @@ const Search: React.FC = () => {
   const [tabsVisible, setTabsVisible] = useState(initialQuery !== '');
 
   const [selectedImage, setSelectedImage] = useState<SearchResult | null>(null);
-  const resultsPerPage = 10;
-  const maxResults = 100;
+
 
   useEffect(() => {
     handleSearch(page);
