@@ -85,11 +85,11 @@ const Search: React.FC = () => {
         title: searchType === 'web' ? item.title : undefined,
         snippet: searchType === 'web' ? item.snippet : undefined,
         link: item.link,
-        thumbnail: item.pagemap?.cse_thumbnail?.[0]?.src || item.link,
-        image: item.pagemap?.cse_image?.[0]?.src || item.link,
+        thumbnail: item.pagemap?.cse_thumbnail?.[0]?.src || item.pagemap?.metatags?.[0]?.['og:image'] ||  item.link,
+        image: item.pagemap?.cse_image?.[0]?.src || item.pagemap?.metatags?.[0]?.['og:image'] || item.link,
         source: new URL(item.link).hostname,
       })) || [];
-
+console.log(response.data.items);
       setResults(formattedResults);
       setPage(newPage); // Update the current page number
 
@@ -125,10 +125,14 @@ const Search: React.FC = () => {
   // Handle clicking a suggestion
   const handleSuggestionClick = (suggestion: string) => {
     setQuery(suggestion); // Set the query to the suggestion
-    setSuggestions([]); // Close the suggestion list
     setPage(1); // Start from the first page of results
     setTabsVisible(true); // Show tabs
     handleSearch(); // Trigger search
+
+      // Delay clearing suggestions to prevent cut-off issues
+  setTimeout(() => {
+    setSuggestions([]);
+  }, 100);
   };
 
   return (
@@ -211,6 +215,7 @@ const Search: React.FC = () => {
                     src={item.thumbnail}
                     alt={item.title}
                     className="w-20 h-20 object-cover rounded-lg mr-4"
+
                   />
                 )}
                 <div className="flex-1">
@@ -239,6 +244,7 @@ const Search: React.FC = () => {
                         src={item.thumbnail}
                         alt={item.title}
                         className="absolute top-0 right-0 w-12 h-12 object-cover rounded-full border-4 border-white"
+
                       />
                     )}
                   </div>
@@ -294,7 +300,8 @@ const Search: React.FC = () => {
             >
               ✕
             </button>
-            <img src={selectedImage.image} alt="Full-size" className="w-full max-h-[500px] object-contain rounded-lg" />
+            <img src={selectedImage.image} alt="Full-size" className="w-full max-h-[500px] object-contain rounded-lg" 
+                 />
             <div className="mt-4 text-center">
               <p className="text-lg font-semibold">{selectedImage.title || 'Image Preview'}</p>
               <p className="text-sm text-gray-500">{selectedImage.source}</p>
