@@ -25,12 +25,39 @@ const Search: React.FC = () => {
   const [tabsVisible, setTabsVisible] = useState(initialQuery !== '');
 
   const [selectedImage, setSelectedImage] = useState<SearchResult | null>(null);
-
+  // For auto-suggest
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   useEffect(() => {
     handleSearch(page);
+  }, [searchType, page, tabsVisible]); // Runs when query changes, or page/tabsVisible changes
 
-  }, [searchType, page, tabsVisible]); // Runs when quer
+  // Fetch auto-suggestions as the user types
+  const handleQueryChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+
+    if (e.target.value.trim() === '') {
+      setSuggestions([]); // Clear suggestions if query is empty
+      return;
+    }
+
+    setSuggestionsLoading(true);
+    try {
+      const response = await axios.get('https://auto-suggest-queries.p.rapidapi.com/suggestqueries', {
+        params: { query: e.target.value },
+        headers: {
+          'X-RapidAPI-Key': import.meta.env.VITE_APP_RAPIDAPI_KEY || '',
+          'X-RapidAPI-Host': import.meta.env.VITE_APP_RAPIDAPI_HOST || ''
+        }
+      });
+      setSuggestions(response.data || []);
+    } catch (error) {
+      console.error('Error fetching auto-suggestions:', error);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  };
 
   const handleSearch = async (newPage = 1) => {
     if (!query) return;
@@ -76,14 +103,16 @@ const Search: React.FC = () => {
   const handleSearchClick = () => {
     setPage(1); // Reset to the first page whenever a new search is triggered
     setTabsVisible(true); // Show tabs once search is triggered
-    handleSearch();
+    setSuggestions([]); // Clear suggestions
+    handleSearch(); // Trigger search
   };
 
   const handleSearchOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       setPage(1); // Reset to the first page whenever the Enter key is pressed
       setTabsVisible(true); // Show tabs once search is triggered
-      handleSearch();
+      setSuggestions([]); // Clear suggestions
+      handleSearch(); // Trigger search
     }
   };
 
@@ -91,6 +120,15 @@ const Search: React.FC = () => {
     setSearchType(type);
     setPage(1); // Reset to the first page whenever the tab is changed
     setResults([]); // Clear previous results
+  };
+
+  // Handle clicking a suggestion
+  const handleSuggestionClick = (suggestion: string) => {
+    setQuery(suggestion); // Set the query to the suggestion
+    setSuggestions([]); // Close the suggestion list
+    setPage(1); // Start from the first page of results
+    setTabsVisible(true); // Show tabs
+    handleSearch(); // Trigger search
   };
 
   return (
@@ -109,7 +147,7 @@ const Search: React.FC = () => {
           <input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={handleQueryChange}
             onKeyDown={handleSearchOnEnter} // Press Enter to search
             placeholder="Search..."
             className="flex-grow outline-none text-lg px-4 bg-transparent"
@@ -121,6 +159,22 @@ const Search: React.FC = () => {
             Search
           </button>
         </div>
+
+        {/* Auto-suggestions */}
+        {suggestions.length > 0 && !suggestionsLoading && (
+          <ul className="mt-2 bg-white border border-gray-300 rounded-lg shadow-md absolute w-full max-w-2xl">
+            {suggestions.map((suggestion, index) => (
+              <li
+                key={index}
+                className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSuggestionClick(suggestion)} // Use the handleSuggestionClick function
+              >
+                {suggestion}
+              </li>
+            ))}
+          </ul>
+        )}
+        {suggestionsLoading && <p>Loading suggestions...</p>}
 
         {/* Tabs for Web and Image Search */}
         {tabsVisible && (
@@ -149,109 +203,72 @@ const Search: React.FC = () => {
 
         {/* Search Results */}
         <div className="mt-6 bg-white bg-opacity-50 space-y-4">
-  {searchType === 'web' ? (
-    results.map((item, index) => (
-      <div key={index} className="bg-white bg-opacity-50 p-4 hover:bg-gray-50 rounded-lg shadow-md flex items-start">
-        {item.thumbnail && (
-          <img
-            src={item.thumbnail}
-            alt={item.title}
-            className="w-20 h-20 object-cover rounded-lg mr-4"
-          />
-        )}
-        <div className="flex-1">
-          <h3 className="text-xl font-semibold text-blue-600">
-            <a href={item.link}>
-              {item.title}
-            </a>
-          </h3>
-          <p className="text-gray-500 text-sm">{item.source}</p> {/* Display the URL */}
-          <p className="text-gray-700 mt-2">{item.snippet}</p>
+          {searchType === 'web' ? (
+            results.map((item, index) => (
+              <div key={index} className="bg-white bg-opacity-50 p-4 rounded-lg shadow-md flex items-start">
+                {item.thumbnail && (
+                  <img
+                    src={item.thumbnail}
+                    alt={item.title}
+                    className="w-20 h-20 object-cover rounded-lg mr-4"
+                  />
+                )}
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold text-blue-600">
+                    <a href={item.link}>
+                      {item.title}
+                    </a>
+                  </h3>
+                  <p className="text-gray-500 text-sm">{item.source}</p> {/* Display the URL */}
+                  <p className="text-gray-700 mt-2">{item.snippet}</p>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {results.map((item, index) => (
+                <button key={index} onClick={() => setSelectedImage(item)}>
+                  <div className="relative">
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-full h-auto object-cover rounded-md shadow-md"
+                    />
+                    {item.thumbnail && (
+                      <img
+                        src={item.thumbnail}
+                        alt={item.title}
+                        className="absolute top-0 right-0 w-12 h-12 object-cover rounded-full border-4 border-white"
+                      />
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
-    ))
-  ) : (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-      {results.map((item, index) => (
-        <button key={index} onClick={() => setSelectedImage(item)}>
-          <img
-            src={item.thumbnail}
-            alt="Search result"
-            className="w-full h-40 object-cover rounded-lg shadow-md transition-transform hover:scale-105"
-          />
-        </button>
-      ))}
-    </div>
-  )}
-</div>
 
-
-
-        {/* Pagination Controls */}
-        {results.length > 0 && (
-          <div className="flex justify-center bg-white space-x-4 mt-6">
-            <button
-              onClick={() => handleSearch(page - 1)}
-              disabled={page === 1}
-              className={`px-4 py-2 rounded-none ${
-                page === 1
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-blue-500 text-white hover:bg-blue-600'
-              }`}
-            >
-              Prev
-            </button>
-
-            <span className="text-lg font-semibold mt-2" >Page {page}</span>
-
-            <button
-              onClick={() => handleSearch(page + 1)}
-              disabled={page * 10 >= 100} // Disable Next when max 100 results are reached
-              className={`px-4 py-2 rounded-none ${
-                page * 10 >= 100
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-blue-500 text-white hover:bg-blue-600'
-              }`}
-            >
-              Next
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Image Preview Modal */}
-      {selectedImage && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center"
-          onClick={() => setSelectedImage(null)}
-        >
-          <div
-            className="bg-white p-4 rounded-lg shadow-lg max-w-2xl relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full"
-              onClick={() => setSelectedImage(null)}
-            >
-              ✕
-            </button>
-            <img src={selectedImage.image} alt="Full-size" className="w-full max-h-[500px] object-contain rounded-lg" />
-            <div className="mt-4 text-center">
-              <p className="text-lg font-semibold">{selectedImage.title || 'Image Preview'}</p>
-              <p className="text-sm text-gray-500">{selectedImage.source}</p>
-              <a
-                href={selectedImage.link}
-
-                className="text-blue-500 hover:underline"
+        {/* Image Modal (If Any Image Is Selected) */}
+        {selectedImage && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+            <div className="bg-white p-8 rounded-lg shadow-lg max-w-lg w-full">
+              <img
+                src={selectedImage.image || selectedImage.link}
+                alt={selectedImage.title}
+                className="w-full h-auto object-cover rounded-lg mb-4"
+              />
+              <button
+                onClick={() => setSelectedImage(null)}
+                className="absolute top-4 right-4 text-white bg-black rounded-full p-2"
               >
-                View Image
-              </a>
+                X
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
 
-export default Search; 
+export default Search;
