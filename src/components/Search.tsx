@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef  } from 'react';
 import axios from 'axios';
 import { useSearchParams } from 'react-router-dom';
 
@@ -28,7 +28,22 @@ const Search: React.FC = () => {
   // For auto-suggest
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const suggestionsRef = useRef<HTMLUListElement | null>(null); // Reference for the suggestions container
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+        setSuggestions([]); // Clear suggestions if clicked outside
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    // Cleanup listener on component unmount
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
   useEffect(() => {
     handleSearch(page);
   }, [searchType, page, tabsVisible]); // Runs when query changes, or page/tabsVisible changes
@@ -89,7 +104,6 @@ const Search: React.FC = () => {
         image: item.pagemap?.cse_image?.[0]?.src || item.pagemap?.metatags?.[0]?.['og:image'] || item.link,
         source: new URL(item.link).hostname,
       })) || [];
-console.log(response.data.items);
       setResults(formattedResults);
       setPage(newPage); // Update the current page number
 
@@ -97,6 +111,7 @@ console.log(response.data.items);
       console.error('Error fetching search results:', error);
     } finally {
       setLoading(false);
+
     }
   };
 
@@ -113,6 +128,7 @@ console.log(response.data.items);
       setTabsVisible(true); // Show tabs once search is triggered
       setSuggestions([]); // Clear suggestions
       handleSearch(); // Trigger search
+      
     }
   };
 
@@ -124,15 +140,17 @@ console.log(response.data.items);
 
   // Handle clicking a suggestion
   const handleSuggestionClick = (suggestion: string) => {
-    setQuery(suggestion); // Set the query to the suggestion
-    setPage(1); // Start from the first page of results
+    setQuery(suggestion);
+  
+    setPage(1); // Reset to first page
     setTabsVisible(true); // Show tabs
     handleSearch(); // Trigger search
+  
+    // Delay clearing suggestions to prevent cut-off issues
+    setTimeout(() => {
+      setSuggestions([]);
+    }, 100);
 
-      // Delay clearing suggestions to prevent cut-off issues
-  setTimeout(() => {
-    setSuggestions([]);
-  }, 100);
   };
 
   return (
@@ -166,7 +184,8 @@ console.log(response.data.items);
 
         {/* Auto-suggestions */}
         {suggestions.length > 0 && !suggestionsLoading && (
-          <ul className="mt-2 bg-white border border-gray-300 rounded-lg shadow-md absolute w-full max-w-2xl">
+          <ul           ref={suggestionsRef} // Attach the ref here
+          className="mt-2 bg-white border border-gray-300 rounded-lg shadow-md absolute w-full max-w-2xl">
             {suggestions.map((suggestion, index) => (
               <li
                 key={index}
