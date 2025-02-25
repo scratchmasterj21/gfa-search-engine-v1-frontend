@@ -205,7 +205,7 @@ const Search: React.FC = () => {
         <div className="mt-6 bg-white bg-opacity-50 space-y-4">
           {searchType === 'web' ? (
             results.map((item, index) => (
-              <div key={index} className="bg-white bg-opacity-50 p-4 rounded-lg shadow-md flex items-start">
+              <div key={index} className="bg-white hover:bg-gray-50 bg-opacity-50 p-4 rounded-lg shadow-md flex items-start">
                 {item.thumbnail && (
                   <img
                     src={item.thumbnail}
@@ -247,25 +247,68 @@ const Search: React.FC = () => {
             </div>
           )}
         </div>
+ {/* Pagination Controls */}
+ {results.length > 0 && (
+          <div className="flex justify-center bg-white space-x-4 mt-6">
+            <button
+              onClick={() => handleSearch(page - 1)}
+              disabled={page === 1}
+              className={`px-4 py-2 rounded-none ${
+                page === 1
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
+            >
+              Prev
+            </button>
 
-        {/* Image Modal (If Any Image Is Selected) */}
-        {selectedImage && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-            <div className="bg-white p-8 rounded-lg shadow-lg max-w-lg w-full">
-              <img
-                src={selectedImage.image || selectedImage.link}
-                alt={selectedImage.title}
-                className="w-full h-auto object-cover rounded-lg mb-4"
-              />
-              <button
-                onClick={() => setSelectedImage(null)}
-                className="absolute top-4 right-4 text-white bg-black rounded-full p-2"
-              >
-                X
-              </button>
-            </div>
+            <span className="text-lg font-semibold mt-2" >Page {page}</span>
+
+            <button
+              onClick={() => handleSearch(page + 1)}
+              disabled={page * 10 >= 100} // Disable Next when max 100 results are reached
+              className={`px-4 py-2 rounded-none ${
+                page * 10 >= 100
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
+            >
+              Next
+            </button>
           </div>
         )}
+  
+         {/* Image Preview Modal */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div
+            className="bg-white p-4 rounded-lg shadow-lg max-w-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full"
+              onClick={() => setSelectedImage(null)}
+            >
+              ✕
+            </button>
+            <img src={selectedImage.image} alt="Full-size" className="w-full max-h-[500px] object-contain rounded-lg" />
+            <div className="mt-4 text-center">
+              <p className="text-lg font-semibold">{selectedImage.title || 'Image Preview'}</p>
+              <p className="text-sm text-gray-500">{selectedImage.source}</p>
+              <a
+                href={selectedImage.link}
+
+                className="text-blue-500 hover:underline"
+              >
+                View Image
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
