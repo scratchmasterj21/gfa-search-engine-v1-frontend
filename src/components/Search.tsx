@@ -148,10 +148,10 @@ const Search: React.FC = () => {
         {loading && <p className="text-center text-gray-500 mt-4">Loading...</p>}
 
         {/* Search Results */}
-        <div className="mt-6 space-y-4">
+        <div className="mt-6 bg-white bg-opacity-50 space-y-4">
   {searchType === 'web' ? (
     results.map((item, index) => (
-      <div key={index} className="bg-white p-4 rounded-lg shadow-md flex items-start">
+      <div key={index} className="bg-white bg-opacity-50 p-4 hover:bg-gray-50 rounded-lg shadow-md flex items-start">
         {item.thumbnail && (
           <img
             src={item.thumbnail}
@@ -189,25 +189,25 @@ const Search: React.FC = () => {
 
         {/* Pagination Controls */}
         {results.length > 0 && (
-          <div className="flex justify-center space-x-4 mt-6">
+          <div className="flex justify-center bg-white space-x-4 mt-6">
             <button
               onClick={() => handleSearch(page - 1)}
               disabled={page === 1}
-              className={`px-4 py-2 rounded-lg ${
+              className={`px-4 py-2 rounded-none ${
                 page === 1
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-blue-500 text-white hover:bg-blue-600'
               }`}
             >
-              Previous
+              Prev
             </button>
 
-            <span className="text-lg font-semibold">Page {page}</span>
+            <span className="text-lg font-semibold mt-2" >Page {page}</span>
 
             <button
               onClick={() => handleSearch(page + 1)}
               disabled={page * 10 >= 100} // Disable Next when max 100 results are reached
-              className={`px-4 py-2 rounded-lg ${
+              className={`px-4 py-2 rounded-none ${
                 page * 10 >= 100
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-blue-500 text-white hover:bg-blue-600'
