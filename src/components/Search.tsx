@@ -23,6 +23,7 @@ const Search: React.FC = () => {
   const [searchType, setSearchType] = useState<'web' | 'image'>(initialSearchType);
   const [page, setPage] = useState(initialPage);
   const [tabsVisible, setTabsVisible] = useState(initialQuery !== '');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [selectedImage, setSelectedImage] = useState<SearchResult | null>(null);
   // For auto-suggest
@@ -78,6 +79,7 @@ const Search: React.FC = () => {
     if (!query) return;
 
     setLoading(true);
+    setErrorMessage(null); // Reset error message before search
 
     try {
       const startIndex = (newPage - 1) * 10 + 1; // Correctly calculate the starting index for pagination
@@ -108,7 +110,15 @@ const Search: React.FC = () => {
       setPage(newPage); // Update the current page number
 
     } catch (error) {
-      console.error('Error fetching search results:', error);
+      if (axios.isAxiosError(error)) {
+        // If the error is from Axios (e.g., network failure or 4xx/5xx response)
+        setErrorMessage(error.response?.data?.error || error.message || 'An unexpected error occurred.');
+      } else if (error instanceof Error) {
+        // If it's a general JS error
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage('An unknown error occurred.');
+      }
     } finally {
       setLoading(false);
 
@@ -223,6 +233,11 @@ const Search: React.FC = () => {
 
         {/* Loading Indicator */}
         {loading && <p className="text-center text-gray-500 mt-4">Loading...</p>}
+        {errorMessage && (
+  <div className="bg-red-100 text-red-700 p-3 rounded-md mt-4 text-center">
+    {errorMessage}
+  </div>
+)}
 
         {/* Search Results */}
         <div className="mt-6 bg-white bg-opacity-50 space-y-4">
