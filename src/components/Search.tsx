@@ -104,7 +104,7 @@ const Search: React.FC = () => {
         link: item.link,
         thumbnail: item.pagemap?.cse_thumbnail?.[0]?.src || item.pagemap?.metatags?.[0]?.['og:image'] ||  item.link,
         image: item.pagemap?.cse_image?.[0]?.src || item.pagemap?.metatags?.[0]?.['og:image'] || item.link,
-        source: new URL(item.pagemap?.cse_thumbnail?.[0]?.src || item.pagemap?.metatags?.[0]?.['og:image'] ||  item.link).hostname,
+        source: new URL(item.link).hostname,
       })) || [];
       setResults(formattedResults);
       setPage(newPage); // Update the current page number
