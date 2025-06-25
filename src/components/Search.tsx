@@ -125,7 +125,7 @@ const handleSearch = async (newPage = 1) => {
     // Log the search to Firebase (only for new searches, not pagination)
     // Pass both original and formatted results
     if (newPage === 1) {
-      await logSearch(query, searchType, originalResults, formattedResults);
+      await logSearch(query, searchType, originalResults);
     }
 
   } catch (error) {
