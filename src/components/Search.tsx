@@ -424,51 +424,39 @@ const handleSearch = async (newPage = 1) => {
           )}
         </div>
 
-        {/* Image Modal */}
-        {selectedImage && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-90 flex justify-center items-center z-50 p-4"
-            onClick={() => setSelectedImage(null)}
-          >
-            <div
-              className="bg-white rounded-2xl shadow-2xl max-w-5xl max-h-[90vh] overflow-hidden relative animate-in zoom-in duration-200"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                className="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 z-10 shadow-lg hover:scale-110"
-                onClick={() => setSelectedImage(null)}
-              >
-                ✕
-              </button>
-              
-              <div className="max-h-[70vh] overflow-hidden">
-                <img 
-                  src={selectedImage.image} 
-                  alt="Full-size preview" 
-                  className="w-full h-full object-contain bg-gray-50"
-                />
-              </div>
-              
-              <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100">
-                <h3 className="text-xl font-bold text-gray-800 mb-2 truncate">
-                  {selectedImage.title || 'Image Preview'}
-                </h3>
-                <p className="text-sm text-gray-600 mb-4 truncate">
-                  Source: {selectedImage.source}
-                </p>
-                <a
-                  href={selectedImage.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105"
-                >
-                  <span>View Original</span>
-                  <span>↗</span>
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
+{/* Image Modal */}
+{selectedImage && (
+  <div
+    className="fixed inset-0 bg-black bg-opacity-90 flex justify-center items-center z-50 p-4"
+    onClick={() => setSelectedImage(null)}
+  >
+    <div
+      className="bg-white rounded-2xl shadow-2xl w-full h-full max-w-7xl max-h-[95vh] overflow-hidden relative animate-in zoom-in duration-200 flex flex-col"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        className="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 z-10 shadow-lg hover:scale-110"
+        onClick={() => setSelectedImage(null)}
+      >
+        ✕
+      </button>
+      
+      {/* Image Container - Takes up most of the modal space */}
+      <div className="flex-1 overflow-auto bg-gray-50 flex items-center justify-center p-4">
+        <img 
+          src={selectedImage.image} 
+          alt="Full-size preview" 
+          className="max-w-full max-h-full object-contain shadow-lg"
+          style={{ 
+            minHeight: '200px', // Ensure minimum height for very small images
+            width: 'auto',
+            height: 'auto'
+          }}
+        />
+      </div>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );
