@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useSearchParams } from 'react-router-dom';
+import { logSearch, getDeviceId } from './firebase'; // Import the logging function
 
 interface SearchResult {
   title?: string;
@@ -27,8 +28,16 @@ const Search: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<SearchResult | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [deviceId, setDeviceId] = useState<string>('');
   
   const suggestionsRef = useRef<HTMLUListElement | null>(null);
+
+  // Initialize device ID on component mount
+  useEffect(() => {
+    const id = getDeviceId();
+    setDeviceId(id);
+    console.log('Device ID:', id);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -44,7 +53,9 @@ const Search: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    handleSearch(page);
+    if (initialQuery) {
+      handleSearch(page);
+    }
   }, [searchType, page, tabsVisible]);
 
   const handleQueryChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,53 +83,63 @@ const Search: React.FC = () => {
     }
   };
 
-  const handleSearch = async (newPage = 1) => {
-    if (!query) return;
+  // Updated handleSearch function in your React component
+const handleSearch = async (newPage = 1) => {
+  if (!query) return;
 
-    setLoading(true);
-    setErrorMessage(null);
+  setLoading(true);
+  setErrorMessage(null);
 
-    try {
-      const startIndex = (newPage - 1) * 10 + 1;
-      setSearchParams({ query, searchType, page: String(newPage) });
+  try {
+    const startIndex = (newPage - 1) * 10 + 1;
+    setSearchParams({ query, searchType, page: String(newPage) });
 
-      if (startIndex > 100) return;
+    if (startIndex > 100) return;
 
-      const response = await axios.get<{ items: any[] }>(
-        `https://backend.carlo587-jcl.workers.dev/search`,
-        {
-          params: {
-            query: query,
-            searchType: searchType,
-            start: startIndex,
-          },
-        }
-      );
-
-      const formattedResults = response.data.items?.map((item) => ({
-        title: searchType === 'web' ? item.title : undefined,
-        snippet: searchType === 'web' ? item.snippet : undefined,
-        link: item.link,
-        thumbnail: item.pagemap?.cse_thumbnail?.[0]?.src || item.pagemap?.metatags?.[0]?.['og:image'] || item.link,
-        image: item.pagemap?.cse_image?.[0]?.src || item.pagemap?.metatags?.[0]?.['og:image'] || item.link,
-        source: new URL(item.link).hostname,
-      })) || [];
-      
-      setResults(formattedResults);
-      setPage(newPage);
-
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        setErrorMessage(error.response?.data?.error || error.message || 'An unexpected error occurred.');
-      } else if (error instanceof Error) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage('An unknown error occurred.');
+    const response = await axios.get<{ items: any[] }>(
+      `https://backend.carlo587-jcl.workers.dev/search`,
+      {
+        params: {
+          query: query,
+          searchType: searchType,
+          start: startIndex,
+        },
       }
-    } finally {
-      setLoading(false);
+    );
+
+    // Store original results before formatting
+    const originalResults = response.data.items || [];
+
+    const formattedResults = originalResults.map((item) => ({
+      title: searchType === 'web' ? item.title : undefined,
+      snippet: searchType === 'web' ? item.snippet : undefined,
+      link: item.link,
+      thumbnail: item.pagemap?.cse_thumbnail?.[0]?.src || item.pagemap?.metatags?.[0]?.['og:image'] || item.link,
+      image: item.pagemap?.cse_image?.[0]?.src || item.pagemap?.metatags?.[0]?.['og:image'] || item.link,
+      source: new URL(item.link).hostname,
+    }));
+    
+    setResults(formattedResults);
+    setPage(newPage);
+
+    // Log the search to Firebase (only for new searches, not pagination)
+    // Pass both original and formatted results
+    if (newPage === 1) {
+      await logSearch(query, searchType, originalResults, formattedResults);
     }
-  };
+
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      setErrorMessage(error.response?.data?.error || error.message || 'An unexpected error occurred.');
+    } else if (error instanceof Error) {
+      setErrorMessage(error.message);
+    } else {
+      setErrorMessage('An unknown error occurred.');
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSearchClick = () => {
     setPage(1);
@@ -168,6 +189,15 @@ const Search: React.FC = () => {
             />
           </a>
         </div>
+
+        {/* Device ID Display (for debugging - remove in production) */}
+        {deviceId && (
+          <div className="text-center mb-4">
+            <small className="text-white bg-black bg-opacity-50 px-3 py-1 rounded-full text-xs">
+              Device ID: {deviceId}
+            </small>
+          </div>
+        )}
 
         {/* Main Content Container */}
         <div className="max-w-6xl mx-auto px-4">
