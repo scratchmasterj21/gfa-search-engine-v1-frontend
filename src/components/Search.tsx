@@ -261,6 +261,7 @@ const Search: React.FC = () => {
                 <span className="text-white font-medium text-lg">Searching...</span>
               </div>
             </div>
+            
           )}
 
           {/* Error Message */}
