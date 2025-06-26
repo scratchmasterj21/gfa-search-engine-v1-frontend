@@ -34,7 +34,6 @@ const Search: React.FC = () => {
   const suggestionsRef = useRef<HTMLUListElement | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
-  // Remove isLoadingRef - we'll use the state instead
 
   // Initialize device ID on component mount
   useEffect(() => {
@@ -56,8 +55,9 @@ const Search: React.FC = () => {
     };
   }, []);
 
-  const performSearch = useCallback(async (page: number, isLoadMore = false) => {
-    if (!query) return;
+  // Create a helper function that accepts the query as a parameter
+  const performSearchWithQuery = useCallback(async (searchQuery: string, page: number, isLoadMore = false) => {
+    if (!searchQuery) return;
 
     // Prevent multiple simultaneous requests using state
     if (loading || loadingMore) {
@@ -78,7 +78,7 @@ const Search: React.FC = () => {
       
       // Update URL only for new searches, not for load more
       if (!isLoadMore) {
-        setSearchParams({ query, searchType });
+        setSearchParams({ query: searchQuery, searchType });
       }
 
       // Google Custom Search API limits to 100 total results
@@ -95,7 +95,7 @@ const Search: React.FC = () => {
         `https://backend.carlo587-jcl.workers.dev/search`,
         {
           params: {
-            query: query,
+            query: searchQuery,
             searchType: searchType,
             start: startIndex,
           },
@@ -159,9 +159,9 @@ const Search: React.FC = () => {
       }
 
       // Log the search to Firebase (only for new searches, not pagination)
-    
-      await logSearch(query, searchType, originalResults);
-  
+      if (!isLoadMore) {
+        await logSearch(searchQuery, searchType, originalResults);
+      }
 
     } catch (error) {
       console.error('Search error:', error);
@@ -182,7 +182,12 @@ const Search: React.FC = () => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [query, searchType, loading, loadingMore, setSearchParams]);
+  }, [searchType, loading, loadingMore, setSearchParams]);
+
+  // Update the original performSearch to use the new helper
+  const performSearch = useCallback(async (page: number, isLoadMore = false) => {
+    return performSearchWithQuery(query, page, isLoadMore);
+  }, [query, performSearchWithQuery]);
 
   const loadMoreResults = useCallback(() => {
     if (!hasMore || loading || loadingMore) {
@@ -304,10 +309,16 @@ const Search: React.FC = () => {
   const handleSuggestionClick = (suggestion: string) => {
     setQuery(suggestion);
     setTabsVisible(true);
-    handleSearch();
-    setTimeout(() => {
-      setSuggestions([]);
-    }, 100);
+    setSuggestions([]); // Clear suggestions immediately
+    
+    // Use the suggestion directly instead of relying on state
+    console.log('Starting new search for suggestion:', suggestion);
+    setCurrentPage(1);
+    setHasMore(true);
+    setResults([]);
+    
+    // Call performSearchWithQuery with the suggestion directly
+    performSearchWithQuery(suggestion, 1, false);
   };
 
   return (
