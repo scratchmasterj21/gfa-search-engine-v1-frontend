@@ -39,7 +39,7 @@ const Search: React.FC = () => {
   useEffect(() => {
     const id = getDeviceId();
     setDeviceId(id);
-    console.log('Device ID:', id);
+    console.log('Device ID:', deviceId);
   }, []);
 
   useEffect(() => {
