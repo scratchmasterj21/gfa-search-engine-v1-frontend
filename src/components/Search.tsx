@@ -159,9 +159,9 @@ const Search: React.FC = () => {
       }
 
       // Log the search to Firebase (only for new searches, not pagination)
-      if (!isLoadMore) {
-        await logSearch(query, searchType, originalResults);
-      }
+    
+      await logSearch(query, searchType, originalResults);
+  
 
     } catch (error) {
       console.error('Search error:', error);
