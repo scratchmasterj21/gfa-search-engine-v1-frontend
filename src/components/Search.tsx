@@ -337,15 +337,6 @@ const Search: React.FC = () => {
           </a>
         </div>
 
-        {/* Device ID Display (for debugging - remove in production) */}
-        {deviceId && (
-          <div className="text-center mb-4">
-            <small className="text-white bg-black bg-opacity-50 px-3 py-1 rounded-full text-xs">
-              Device ID: {deviceId}
-            </small>
-          </div>
-        )}
-
         {/* Main Content Container */}
         <div className="max-w-6xl mx-auto px-4">
           {/* Search Section */}
