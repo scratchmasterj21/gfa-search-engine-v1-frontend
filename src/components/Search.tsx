@@ -30,6 +30,7 @@ const Search: React.FC = () => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [deviceId, setDeviceId] = useState<string>('');
+  const [searchFocused, setSearchFocused] = useState(false);
   
   const suggestionsRef = useRef<HTMLUListElement | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -325,15 +326,28 @@ const Search: React.FC = () => {
       className="min-h-screen bg-cover bg-center bg-fixed px-4 py-4 sm:px-6 lg:px-8"
       style={{ backgroundImage: `url('https://i.imgur.com/G20z4MI.png')` }}
     >
-      <div className="min-h-screen bg-black bg-opacity-20 rounded-lg">
+
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full mix-blend-multiply filter blur-xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/20 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-500"></div>
+      </div>
+
+
+
+      <div className="relative z-10">
         {/* Logo Container */}
         <div className="flex justify-center pt-6 pb-8">
-          <a href="/" className="block">
-            <img 
-              src="https://i.imgur.com/QTNsUY1.png" 
-              alt="Google Logo" 
-              className="h-16 w-auto sm:h-20 md:h-24 lg:h-28 cursor-pointer transition-transform duration-200 hover:scale-105" 
-            />
+          <a href="/" className="block group">
+            <div className="relative">
+              <img 
+                src="https://i.imgur.com/QTNsUY1.png" 
+                alt="Google Logo" 
+                className="h-16 w-auto sm:h-20 md:h-24 lg:h-28 cursor-pointer transition-all duration-300 group-hover:scale-110 drop-shadow-2xl" 
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-cyan-400/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
+            </div>
           </a>
         </div>
 
@@ -343,21 +357,33 @@ const Search: React.FC = () => {
           <div className="relative mb-8">
             {/* Search Bar Container */}
             <div className="max-w-2xl mx-auto relative">
-              <div className="flex items-stretch bg-white rounded-full shadow-lg hover:shadow-xl transition-shadow duration-200">
+              <div className={`flex items-stretch bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 border border-white/20 ${searchFocused ? 'ring-2 ring-purple-400/50 shadow-purple-500/30' : ''}`}>
+                <div className="flex items-center pl-6">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
                 <input
                   type="text"
                   value={query}
                   onChange={handleQueryChange}
                   onKeyDown={handleSearchOnEnter}
-                  placeholder="Search Google or type a URL"
-                  className="flex-1 outline-none text-base sm:text-lg px-6 py-4 bg-transparent rounded-l-full"
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => setSearchFocused(false)}
+                  placeholder="Search the universe..."
+                  className="flex-1 outline-none text-base sm:text-lg px-4 py-4 bg-transparent placeholder-gray-500 text-gray-800 font-medium"
                 />
                 <button
                   onClick={handleSearchClick}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-r-full transition-colors duration-200 font-medium whitespace-nowrap"
+                  className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white px-8 py-4 rounded-r-2xl transition-all duration-300 font-semibold whitespace-nowrap shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
                 >
-                  <span className="hidden sm:inline">Search</span>
-                  <span className="sm:hidden text-lg">🔍</span>
+                  <span className="hidden sm:inline flex items-center">
+                    Search
+                    <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </span>
+                  <span className="sm:hidden text-lg">🚀</span>
                 </button>
               </div>
 
@@ -365,17 +391,21 @@ const Search: React.FC = () => {
               {suggestions.length > 0 && !suggestionsLoading && (
                 <ul
                   ref={suggestionsRef}
-                  className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-80 overflow-y-auto"
+                  className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-md border border-white/20 rounded-2xl shadow-2xl z-50 max-h-80 overflow-y-auto animate-in slide-in-from-top-2 duration-200"
                 >
                   {suggestions.map((suggestion, index) => (
                     <li
                       key={index}
-                      className="px-6 py-3 cursor-pointer hover:bg-blue-50 transition-colors duration-150 border-b border-gray-100 last:border-b-0 text-gray-800 first:rounded-t-xl last:rounded-b-xl"
+                      className="px-6 py-4 cursor-pointer hover:bg-gradient-to-r hover:from-purple-50 hover:to-cyan-50 transition-all duration-200 border-b border-gray-100/50 last:border-b-0 text-gray-800 font-medium first:rounded-t-2xl last:rounded-b-2xl group"
                       onClick={() => handleSuggestionClick(suggestion)}
                     >
                       <div className="flex items-center">
-                        <span className="text-gray-400 mr-3">🔍</span>
-                        {suggestion}
+                        <div className="w-5 h-5 mr-3 rounded-full bg-gradient-to-r from-purple-400 to-cyan-400 flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                        </div>
+                        <span className="group-hover:text-purple-700 transition-colors duration-200">{suggestion}</span>
                       </div>
                     </li>
                   ))}
@@ -383,10 +413,10 @@ const Search: React.FC = () => {
               )}
               
               {suggestionsLoading && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl p-4 text-center text-gray-500">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-md border border-white/20 rounded-2xl shadow-2xl p-6 text-center text-gray-600 animate-in slide-in-from-top-2 duration-200">
                   <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                    Loading suggestions...
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-purple-200 border-t-purple-600 mr-3"></div>
+                    <span className="font-medium">Finding suggestions...</span>
                   </div>
                 </div>
               )}
@@ -395,26 +425,32 @@ const Search: React.FC = () => {
 
           {/* Search Type Tabs */}
           {tabsVisible && (
-            <div className="flex justify-center mb-8">
-              <div className="flex bg-white bg-opacity-90 backdrop-blur-sm rounded-full shadow-lg p-1 max-w-xs w-full">
+            <div className="flex justify-center mb-8 animate-in slide-in-from-bottom-3 duration-300">
+              <div className="flex bg-white/20 backdrop-blur-md rounded-2xl shadow-xl p-1.5 border border-white/30">
                 <button
-                  className={`flex-1 py-3 px-6 text-sm sm:text-base font-semibold rounded-full transition-all duration-200 ${
+                  className={`flex items-center py-3 px-8 text-sm sm:text-base font-bold rounded-xl transition-all duration-300 ${
                     searchType === 'web' 
-                      ? 'bg-blue-600 text-white shadow-md transform scale-105' 
-                      : 'text-gray-700 hover:bg-white hover:bg-opacity-50'
+                      ? 'bg-gradient-to-r from-purple-600 to-cyan-600 text-white shadow-lg transform scale-105' 
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
                   }`}
                   onClick={() => handleTabChange('web')}
                 >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
+                  </svg>
                   Web
                 </button>
                 <button
-                  className={`flex-1 py-3 px-6 text-sm sm:text-base font-semibold rounded-full transition-all duration-200 ${
+                  className={`flex items-center py-3 px-8 text-sm sm:text-base font-bold rounded-xl transition-all duration-300 ${
                     searchType === 'image' 
-                      ? 'bg-blue-600 text-white shadow-md transform scale-105' 
-                      : 'text-gray-700 hover:bg-white hover:bg-opacity-50'
+                      ? 'bg-gradient-to-r from-purple-600 to-cyan-600 text-white shadow-lg transform scale-105' 
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
                   }`}
                   onClick={() => handleTabChange('image')}
                 >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
                   Images
                 </button>
               </div>
@@ -423,25 +459,39 @@ const Search: React.FC = () => {
 
           {/* Loading State */}
           {loading && (
-            <div className="text-center py-12">
+            <div className="text-center py-16 animate-in fade-in duration-300">
               <div className="inline-flex flex-col items-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-blue-600 mb-4"></div>
-                <span className="text-white font-medium text-lg">Searching...</span>
+                <div className="relative">
+                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-white/30 border-t-purple-500 mb-6"></div>
+                  <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-4 border-purple-400/50"></div>
+                </div>
+                <span className="text-white font-bold text-xl bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                  Searching the cosmos...
+                </span>
+                <div className="mt-2 flex space-x-1">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce delay-100"></div>
+                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-200"></div>
+                </div>
               </div>
             </div>
           )}
 
           {/* Error Message */}
           {errorMessage && (
-            <div className="max-w-2xl mx-auto mb-8">
-              <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg shadow-md">
+            <div className="max-w-2xl mx-auto mb-8 animate-in slide-in-from-top-3 duration-300">
+              <div className="bg-red-500/20 backdrop-blur-md border-l-4 border-red-400 p-6 rounded-r-2xl shadow-xl border border-red-200/30">
                 <div className="flex">
                   <div className="flex-shrink-0">
-                    <span className="text-red-400 text-xl">⚠️</span>
+                    <div className="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center">
+                      <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                    </div>
                   </div>
-                  <div className="ml-3">
-                    <p className="text-red-700 font-medium">Something went wrong</p>
-                    <p className="text-red-600 text-sm mt-1">{errorMessage}</p>
+                  <div className="ml-4">
+                    <p className="text-red-300 font-bold text-lg">Houston, we have a problem</p>
+                    <p className="text-red-200 text-sm mt-1 font-medium">{errorMessage}</p>
                   </div>
                 </div>
               </div>
@@ -450,44 +500,49 @@ const Search: React.FC = () => {
 
           {/* Search Results */}
           {results.length > 0 && !loading && (
-            <div className="mb-12">
+            <div className="mb-12 animate-in slide-in-from-bottom-4 duration-500">
               {searchType === 'web' ? (
                 /* Web Results */
                 <div className="space-y-6 max-w-4xl mx-auto">
                   {results.map((item, index) => (
                     <div 
                       key={`${item.link}-${index}`} 
-                      className="bg-white bg-opacity-95 backdrop-blur-sm hover:bg-opacity-100 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden group"
+                      className="bg-white/95 backdrop-blur-md hover:bg-white border border-white/20 rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-purple-500/10 transition-all duration-300 overflow-hidden group hover:border-purple-300/50 transform hover:-translate-y-1"
+                      style={{ animationDelay: `${index * 50}ms` }}
                     >
                       <div className="p-6">
-                        <div className="flex flex-col lg:flex-row gap-4">
+                        <div className="flex flex-col lg:flex-row gap-6">
                           {item.thumbnail && (
                             <div className="flex-shrink-0 order-1 lg:order-none">
-                              <img
-                                src={item.thumbnail}
-                                alt={item.title}
-                                className="w-full lg:w-32 lg:h-32 h-48 object-cover rounded-lg group-hover:scale-105 transition-transform duration-200"
-                                loading="lazy"
-                              />
+                              <div className="relative overflow-hidden rounded-xl group-hover:scale-105 transition-transform duration-300">
+                                <img
+                                  src={item.thumbnail}
+                                  alt={item.title}
+                                  className="w-full lg:w-36 lg:h-36 h-48 object-cover"
+                                  loading="lazy"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-purple-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                              </div>
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <div className="mb-2">
-                              <p className="text-green-700 text-sm font-medium truncate">
+                            <div className="mb-3 flex items-center">
+                              <div className="w-3 h-3 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mr-3 animate-pulse"></div>
+                              <p className="text-emerald-600 text-sm font-bold truncate bg-emerald-50 px-3 py-1 rounded-full">
                                 {item.source}
                               </p>
                             </div>
-                            <h3 className="text-xl font-semibold text-blue-600 hover:text-blue-800 transition-colors duration-200 mb-3 leading-tight">
+                            <h3 className="text-xl font-bold text-gray-800 hover:text-purple-600 transition-colors duration-300 mb-4 leading-tight group-hover:text-purple-700">
                               <a 
                                 href={item.link}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="hover:underline"
+                                className="hover:underline decoration-purple-400 decoration-2 underline-offset-4"
                               >
                                 {item.title}
                               </a>
                             </h3>
-                            <p className="text-gray-700 leading-relaxed line-clamp-3">
+                            <p className="text-gray-600 leading-relaxed line-clamp-3 font-medium">
                               {item.snippet}
                             </p>
                           </div>
@@ -498,21 +553,27 @@ const Search: React.FC = () => {
                 </div>
               ) : (
                 /* Image Results */
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
                   {results.map((item, index) => (
                     <button 
                       key={`${item.link}-${index}`} 
                       onClick={() => setSelectedImage(item)}
-                      className="group relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 bg-white"
+                      className="group relative overflow-hidden rounded-2xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/20 transition-all duration-300 transform hover:scale-105 bg-white/95 backdrop-blur-md border border-white/20 hover:border-purple-300/50 animate-in zoom-in duration-200"
+                      style={{ animationDelay: `${index * 30}ms` }}
                     >
-                      <div className="aspect-square p-1">
+                      <div className="aspect-square p-2">
                         <img
                           src={item.image}
                           alt={item.title || 'Search result image'}
-                          className="w-full h-full object-cover rounded-md group-hover:brightness-110 transition-all duration-200"
+                          className="w-full h-full object-cover rounded-xl group-hover:brightness-110 transition-all duration-300"
                           loading="lazy"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-60 transition-opacity duration-200 rounded-lg"></div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
+                        <div className="absolute bottom-2 left-2 right-2 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                          <div className="bg-white/90 backdrop-blur-sm rounded-lg px-2 py-1">
+                            <p className="text-xs font-medium text-gray-800 truncate">View Image</p>
+                          </div>
+                        </div>
                       </div>
                     </button>
                   ))}
@@ -523,31 +584,43 @@ const Search: React.FC = () => {
 
           {/* Load More Trigger & Loading More Indicator */}
           {results.length > 0 && !loading && (
-            <div ref={loadMoreRef} className="text-center py-8">
+            <div ref={loadMoreRef} className="text-center py-12">
               {loadingMore && (
-                <div className="inline-flex flex-col items-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-4 border-white border-t-blue-600 mb-2"></div>
-                  <span className="text-white font-medium">Loading more results...</span>
+                <div className="inline-flex flex-col items-center animate-in fade-in duration-300">
+                  <div className="relative">
+                    <div className="animate-spin rounded-full h-10 w-10 border-4 border-white/30 border-t-cyan-500 mb-4"></div>
+                    <div className="absolute inset-0 animate-ping rounded-full h-10 w-10 border-4 border-cyan-400/50"></div>
+                  </div>
+                  <span className="text-white font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">Loading more results...</span>
                 </div>
               )}
               {!hasMore && !loadingMore && (
-                <div className="text-white bg-black bg-opacity-50 px-6 py-3 rounded-full inline-block">
-                  <span className="font-medium">
-                    {results.length >= 100 ? 'Reached maximum results (100)' : 'No more results'}
-                  </span>
+                <div className="bg-white/20 backdrop-blur-md text-white px-8 py-4 rounded-2xl inline-block border border-white/30 shadow-xl">
+                  <div className="flex items-center">
+                    <svg className="w-5 h-5 mr-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="font-bold">
+                      {results.length >= 100 ? 'Reached maximum results (100)' : 'No more results found'}
+                    </span>
+                  </div>
                 </div>
               )}
-              {/* Add a visible element to help with debugging */}
               {hasMore && !loadingMore && (
-                <div className="text-white bg-black bg-opacity-30 px-4 py-2 rounded-full inline-block text-sm">
-                  Scroll down for more results
+                <div className="bg-gradient-to-r from-purple-500/20 to-cyan-500/20 backdrop-blur-md text-white px-6 py-3 rounded-2xl inline-block border border-white/20 shadow-lg animate-pulse">
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-2 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    <span className="font-medium text-sm">Scroll for more cosmic discoveries</span>
+                  </div>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        {/* Image Modal */}
+{/* Image Modal */}
         {selectedImage && (
           <div
             className="fixed inset-0 bg-black bg-opacity-90 flex justify-center items-center z-50 p-4"
@@ -580,6 +653,18 @@ const Search: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Floating elements for extra visual flair */}
+        <div className="fixed bottom-8 right-8 z-40">
+          {results.length > 0 && (
+            <div className="bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-xl border border-white/30 shadow-lg animate-in slide-in-from-bottom-5 duration-500">
+              <div className="flex items-center text-sm font-medium">
+                <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+                {results.length} results found
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
