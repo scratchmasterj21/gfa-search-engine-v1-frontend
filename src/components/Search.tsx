@@ -12,6 +12,55 @@ interface SearchResult {
   source?: string;
 }
 
+interface Language {
+  code: string;
+  name: string;
+}
+
+interface GeminiResponse {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string;
+      }>;
+    };
+  }>;
+}
+
+interface GeminiError {
+  error?: {
+    message?: string;
+  };
+}
+
+// Define types for better type safety
+type ConverterType = 'length' | 'weight' | 'temperature';
+type LengthUnit = 'meters' | 'feet' | 'inches' | 'centimeters' | 'millimeters' | 'kilometers' | 'miles';
+type WeightUnit = 'kilograms' | 'pounds' | 'grams' | 'ounces';
+type TemperatureUnit = 'celsius' | 'fahrenheit' | 'kelvin';
+
+interface LengthConversion {
+  units: LengthUnit[];
+  toMeters: Record<LengthUnit, number>;
+}
+
+interface WeightConversion {
+  units: WeightUnit[];
+  toKg: Record<WeightUnit, number>;
+}
+
+interface TemperatureConversion {
+  units: TemperatureUnit[];
+  convert: (value: number, from: TemperatureUnit, to: TemperatureUnit) => number;
+}
+
+interface Conversions {
+  length: LengthConversion;
+  weight: WeightConversion;
+  temperature: TemperatureConversion;
+}
+
+
 const Search: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get('query') || '';
@@ -35,6 +84,1009 @@ const Search: React.FC = () => {
   const suggestionsRef = useRef<HTMLUListElement | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  const [showMiniTool, setShowMiniTool] = useState<string | null>(null);
+
+  // 2. Add this function to detect tool keywords (place it after your other functions):
+const detectMiniTool = useCallback((searchQuery: string) => {
+  const query = searchQuery.toLowerCase().trim();
+  
+  // Timer/Stopwatch keywords
+  if (['timer', 'stopwatch', 'countdown', 'alarm'].some(keyword => query.includes(keyword))) {
+    return 'timer';
+  }
+  
+  // Calculator keywords
+  if (['calculator', 'calculate', 'math', 'compute'].some(keyword => query.includes(keyword)) || 
+      /[\d+\-*/()=]/.test(query)) {
+    return 'calculator';
+  }
+  
+  // Translator keywords
+  if (['translate', 'translator', 'translation', 'language'].some(keyword => query.includes(keyword))) {
+    return 'translator';
+  }
+
+   // Weather
+  if (['weather', 'forecast', 'temperature', 'rain', 'sunny', 'cloudy'].some(keyword => query.includes(keyword))) {
+    return 'weather';
+  }
+  
+  // Color Picker
+  if (['color', 'colour', 'picker', 'palette', 'hex', 'rgb'].some(keyword => query.includes(keyword))) {
+    return 'colorpicker';
+  }
+  
+  // QR Code Generator
+  if (['qr', 'qr code', 'qrcode', 'barcode'].some(keyword => query.includes(keyword))) {
+    return 'qrcode';
+  }
+  
+  // Random Generator
+  if (['random', 'dice', 'coin flip', 'lottery', 'number generator'].some(keyword => query.includes(keyword))) {
+    return 'random';
+  }
+  
+  // Password Generator
+  if (['password', 'generate password', 'password generator', 'secure password'].some(keyword => query.includes(keyword))) {
+    return 'password';
+  }
+  
+  // Unit Converter
+  if (['convert', 'converter', 'units', 'measurement', 'feet to meters', 'celsius', 'fahrenheit'].some(keyword => query.includes(keyword))) {
+    return 'converter';
+  }
+  
+  // Note Taking
+  if (['note', 'notes', 'notepad', 'memo', 'write'].some(keyword => query.includes(keyword))) {
+    return 'notes';
+  }
+  
+  // BMI Calculator
+  if (['bmi', 'body mass index', 'weight', 'height', 'fitness'].some(keyword => query.includes(keyword))) {
+    return 'bmi';
+  }
+  
+  // Age Calculator
+  if (['age', 'birthday', 'how old', 'years old'].some(keyword => query.includes(keyword))) {
+    return 'age';
+  }
+  
+  return null;
+}, []);
+
+
+// 3. Mini Timer Component:
+const MiniTimer = () => {
+  const [time, setTime] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [inputMinutes, setInputMinutes] = useState('');
+  const [inputSeconds, setInputSeconds] = useState('');
+  const [mode, setMode] = useState<'timer' | 'stopwatch'>('timer');
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isRunning) {
+      interval = setInterval(() => {
+        setTime(prevTime => {
+          if (mode === 'timer' && prevTime <= 1) {
+            setIsRunning(false);
+            return 0;
+          }
+          return mode === 'timer' ? prevTime - 1 : prevTime + 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isRunning, mode]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const startTimer = () => {
+    if (mode === 'timer') {
+      const totalSeconds = (parseInt(inputMinutes) || 0) * 60 + (parseInt(inputSeconds) || 0);
+      setTime(totalSeconds);
+    }
+    setIsRunning(true);
+  };
+
+  const resetTimer = () => {
+    setIsRunning(false);
+    setTime(0);
+  };
+
+  return (
+    <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl p-6 border border-white/20 mb-8">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-gray-800">Timer & Stopwatch</h3>
+        <div className="flex bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setMode('timer')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              mode === 'timer' 
+                ? 'bg-purple-600 text-white shadow-md' 
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            Timer
+          </button>
+          <button
+            onClick={() => setMode('stopwatch')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              mode === 'stopwatch' 
+                ? 'bg-purple-600 text-white shadow-md' 
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            Stopwatch
+          </button>
+        </div>
+      </div>
+      
+      <div className="text-center mb-6">
+        <div className="text-6xl font-mono font-bold text-gray-800 mb-4">
+          {formatTime(time)}
+        </div>
+        
+        {mode === 'timer' && !isRunning && (
+          <div className="flex justify-center gap-2 mb-4">
+            <input
+              type="number"
+              placeholder="MM"
+              value={inputMinutes}
+              onChange={(e) => setInputMinutes(e.target.value)}
+              className="w-16 px-3 py-2 border border-gray-300 rounded-lg text-center font-mono"
+              min="0"
+              max="99"
+            />
+            <span className="text-2xl font-bold text-gray-600 leading-10">:</span>
+            <input
+              type="number"
+              placeholder="SS"
+              value={inputSeconds}
+              onChange={(e) => setInputSeconds(e.target.value)}
+              className="w-16 px-3 py-2 border border-gray-300 rounded-lg text-center font-mono"
+              min="0"
+              max="59"
+            />
+          </div>
+        )}
+        
+        <div className="flex justify-center gap-4">
+          <button
+            onClick={isRunning ? () => setIsRunning(false) : startTimer}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              isRunning
+                ? 'bg-red-500 hover:bg-red-600 text-white'
+                : 'bg-green-500 hover:bg-green-600 text-white'
+            }`}
+          >
+            {isRunning ? 'Pause' : 'Start'}
+          </button>
+          <button
+            onClick={resetTimer}
+            className="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-xl font-semibold transition-all"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 4. Mini Calculator Component:
+const MiniCalculator = () => {
+  const [display, setDisplay] = useState('0');
+  const [previousValue, setPreviousValue] = useState<number | null>(null);
+  const [operation, setOperation] = useState<string | null>(null);
+  const [waitingForOperand, setWaitingForOperand] = useState(false);
+
+  const inputNumber = (num: string) => {
+    if (waitingForOperand) {
+      setDisplay(num);
+      setWaitingForOperand(false);
+    } else {
+      setDisplay(display === '0' ? num : display + num);
+    }
+  };
+
+  const inputOperation = (nextOperation: string) => {
+    const inputValue = parseFloat(display);
+
+    if (previousValue === null) {
+      setPreviousValue(inputValue);
+    } else if (operation) {
+      const currentValue = previousValue || 0;
+      const newValue = calculate(currentValue, inputValue, operation);
+
+      setDisplay(String(newValue));
+      setPreviousValue(newValue);
+    }
+
+    setWaitingForOperand(true);
+    setOperation(nextOperation);
+  };
+
+  const calculate = (firstValue: number, secondValue: number, operation: string) => {
+    switch (operation) {
+      case '+': return firstValue + secondValue;
+      case '-': return firstValue - secondValue;
+      case '*': return firstValue * secondValue;
+      case '/': return firstValue / secondValue;
+      case '=': return secondValue;
+      default: return secondValue;
+    }
+  };
+
+  const performCalculation = () => {
+    const inputValue = parseFloat(display);
+
+    if (previousValue !== null && operation) {
+      const newValue = calculate(previousValue, inputValue, operation);
+      setDisplay(String(newValue));
+      setPreviousValue(null);
+      setOperation(null);
+      setWaitingForOperand(true);
+    }
+  };
+
+  const clear = () => {
+    setDisplay('0');
+    setPreviousValue(null);
+    setOperation(null);
+    setWaitingForOperand(false);
+  };
+
+  const Button = ({ onClick, className, children }: any) => (
+    <button
+      onClick={onClick}
+      className={`h-12 rounded-xl font-semibold transition-all hover:scale-105 active:scale-95 ${className}`}
+    >
+      {children}
+    </button>
+  );
+
+  return (
+    <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl p-6 border border-white/20 mb-8">
+      <h3 className="text-xl font-bold text-gray-800 mb-4">Calculator</h3>
+      
+      <div className="bg-gray-900 text-white p-4 rounded-xl mb-4">
+        <div className="text-right text-3xl font-mono overflow-hidden">
+          {display}
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-4 gap-3">
+        <Button onClick={clear} className="bg-red-500 hover:bg-red-600 text-white col-span-2">
+          Clear
+        </Button>
+        <Button onClick={() => inputOperation('/')} className="bg-orange-500 hover:bg-orange-600 text-white">
+          ÷
+        </Button>
+        <Button onClick={() => inputOperation('*')} className="bg-orange-500 hover:bg-orange-600 text-white">
+          ×
+        </Button>
+        
+        <Button onClick={() => inputNumber('7')} className="bg-gray-200 hover:bg-gray-300 text-gray-800">
+          7
+        </Button>
+        <Button onClick={() => inputNumber('8')} className="bg-gray-200 hover:bg-gray-300 text-gray-800">
+          8
+        </Button>
+        <Button onClick={() => inputNumber('9')} className="bg-gray-200 hover:bg-gray-300 text-gray-800">
+          9
+        </Button>
+        <Button onClick={() => inputOperation('-')} className="bg-orange-500 hover:bg-orange-600 text-white">
+          -
+        </Button>
+        
+        <Button onClick={() => inputNumber('4')} className="bg-gray-200 hover:bg-gray-300 text-gray-800">
+          4
+        </Button>
+        <Button onClick={() => inputNumber('5')} className="bg-gray-200 hover:bg-gray-300 text-gray-800">
+          5
+        </Button>
+        <Button onClick={() => inputNumber('6')} className="bg-gray-200 hover:bg-gray-300 text-gray-800">
+          6
+        </Button>
+        <Button onClick={() => inputOperation('+')} className="bg-orange-500 hover:bg-orange-600 text-white">
+          +
+        </Button>
+        
+        <Button onClick={() => inputNumber('1')} className="bg-gray-200 hover:bg-gray-300 text-gray-800">
+          1
+        </Button>
+        <Button onClick={() => inputNumber('2')} className="bg-gray-200 hover:bg-gray-300 text-gray-800">
+          2
+        </Button>
+        <Button onClick={() => inputNumber('3')} className="bg-gray-200 hover:bg-gray-300 text-gray-800">
+          3
+        </Button>
+        <Button onClick={performCalculation} className="bg-purple-600 hover:bg-purple-700 text-white row-span-2">
+          =
+        </Button>
+        
+        <Button onClick={() => inputNumber('0')} className="bg-gray-200 hover:bg-gray-300 text-gray-800 col-span-2">
+          0
+        </Button>
+        <Button onClick={() => inputNumber('.')} className="bg-gray-200 hover:bg-gray-300 text-gray-800">
+          .
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const MiniTranslator = () => {
+  const [sourceText, setSourceText] = useState<string>('');
+  const [translatedText, setTranslatedText] = useState<string>('');
+  const [sourceLang, setSourceLang] = useState<string>('ja');
+  const [targetLang, setTargetLang] = useState<string>('en');
+  const [isTranslating, setIsTranslating] = useState<boolean>(false);
+  const [currentKeyIndex, setCurrentKeyIndex] = useState<number>(0);
+  const [keyStatus, setKeyStatus] = useState<{[key: number]: {
+    isBlocked: boolean;
+    blockedUntil: number;
+    lastUsed: number;
+    requestCount: number;
+    windowStart: number;
+  }}>({});
+
+  const languages: Language[] = [
+    { code: 'en', name: 'English' },
+    { code: 'ja', name: 'Japanese' },
+  ];
+
+  // Rate limit configurations (conservative estimates for Gemini free tier)
+  const RATE_LIMITS = {
+    RPM: 30, // Requests per minute
+    COOLDOWN_MINUTES: 1, // How long to wait before retrying a rate-limited key
+    WINDOW_MINUTES: 1, // Time window for counting requests
+  };
+
+  // Get all API keys from environment variables
+  const getApiKeys = (): string[] => {
+    const keys: string[] = [];
+    
+    const keyVariations = [
+      'VITE_APP_GEMINI_API_KEY',
+      'VITE_APP_GEMINI_API_KEY_1',
+      'VITE_APP_GEMINI_API_KEY_2',
+      'VITE_APP_GEMINI_API_KEY_3',
+      'VITE_APP_GEMINI_API_KEY_4',
+      'VITE_APP_GEMINI_API_KEY_5',
+      // Add more as needed
+      'VITE_APP_GEMINI_API_KEY_6',
+      'VITE_APP_GEMINI_API_KEY_7',
+      'VITE_APP_GEMINI_API_KEY_8',
+      'VITE_APP_GEMINI_API_KEY_9'
+    ];
+
+    keyVariations.forEach(keyName => {
+      const key = import.meta.env[keyName];
+      if (key && key.trim()) {
+        keys.push(key.trim());
+      }
+    });
+
+    return keys;
+  };
+
+  const apiKeys = getApiKeys();
+
+  const getLanguageName = (code: string): string => {
+    return languages.find((lang: Language) => lang.code === code)?.name || code;
+  };
+
+  // Initialize key status
+  const initializeKeyStatus = (keyIndex: number) => {
+    if (!keyStatus[keyIndex]) {
+      setKeyStatus(prev => ({
+        ...prev,
+        [keyIndex]: {
+          isBlocked: false,
+          blockedUntil: 0,
+          lastUsed: 0,
+          requestCount: 0,
+          windowStart: Date.now(),
+        }
+      }));
+    }
+  };
+
+  // Check if a key is available to use
+  const isKeyAvailable = (keyIndex: number): boolean => {
+    const now = Date.now();
+    const status = keyStatus[keyIndex];
+    
+    if (!status) return true; // Key not used yet
+    
+    // Check if cooldown period has passed
+    if (status.isBlocked && now >= status.blockedUntil) {
+      return true;
+    }
+    
+    if (status.isBlocked) return false;
+    
+    // Check request count in current window
+    const windowElapsed = now - status.windowStart;
+    if (windowElapsed >= RATE_LIMITS.WINDOW_MINUTES * 60 * 1000) {
+      return true; // Window has reset
+    }
+    
+    return status.requestCount < RATE_LIMITS.RPM;
+  };
+
+  // Update key status after use
+  const updateKeyStatus = (keyIndex: number, wasRateLimited: boolean) => {
+    const now = Date.now();
+    
+    setKeyStatus(prev => {
+      const currentStatus = prev[keyIndex] || {
+        isBlocked: false,
+        blockedUntil: 0,
+        lastUsed: 0,
+        requestCount: 0,
+        windowStart: now,
+      };
+      
+      // Reset window if needed
+      const windowElapsed = now - currentStatus.windowStart;
+      let newRequestCount = currentStatus.requestCount;
+      let newWindowStart = currentStatus.windowStart;
+      
+      if (windowElapsed >= RATE_LIMITS.WINDOW_MINUTES * 60 * 1000) {
+        newRequestCount = 0;
+        newWindowStart = now;
+      }
+      
+      return {
+        ...prev,
+        [keyIndex]: {
+          isBlocked: wasRateLimited,
+          blockedUntil: wasRateLimited ? now + (RATE_LIMITS.COOLDOWN_MINUTES * 60 * 1000) : 0,
+          lastUsed: now,
+          requestCount: newRequestCount + 1,
+          windowStart: newWindowStart,
+        }
+      };
+    });
+  };
+
+  // Get next available key
+  const getNextAvailableKey = (): number | null => {
+    // First, try current key if it's available
+    if (isKeyAvailable(currentKeyIndex)) {
+      return currentKeyIndex;
+    }
+    
+    // Then try all other keys
+    for (let i = 0; i < apiKeys.length; i++) {
+      if (isKeyAvailable(i)) {
+        return i;
+      }
+    }
+    
+    return null; // No keys available
+  };
+
+  // Get status summary for UI
+  const getKeyStatusSummary = () => {
+    const now = Date.now();
+    let available = 0;
+    let blocked = 0;
+    let nearLimit = 0;
+    
+    for (let i = 0; i < apiKeys.length; i++) {
+      const status = keyStatus[i];
+      if (!status) {
+        available++;
+        continue;
+      }
+      
+      if (status.isBlocked && now < status.blockedUntil) {
+        blocked++;
+      } else if (status.requestCount >= RATE_LIMITS.RPM * 0.8) {
+        nearLimit++;
+      } else {
+        available++;
+      }
+    }
+    
+    return { available, blocked, nearLimit };
+  };
+
+  const translateWithKey = async (apiKey: string): Promise<string> => {
+    const prompt: string = `Translate the following text from ${getLanguageName(sourceLang)} to ${getLanguageName(targetLang)}. Return only the translation, no explanations or additional text:
+
+"${sourceText}"`;
+
+    const response: Response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 1000,
+          }
+        })
+      }
+    );
+    
+    if (!response.ok) {
+      const errorData: GeminiError = await response.json();
+      const errorMessage = errorData.error?.message || `HTTP error! status: ${response.status}`;
+      
+      // Check if it's a rate limit error
+      if (errorMessage.includes('QUOTA_EXCEEDED') || 
+          errorMessage.includes('RATE_LIMIT_EXCEEDED') ||
+          errorMessage.includes('Too Many Requests') ||
+          response.status === 429) {
+        throw new Error('RATE_LIMIT');
+      }
+      
+      throw new Error(errorMessage);
+    }
+    
+    const data: GeminiResponse = await response.json();
+    
+    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+      const translation: string | undefined = data.candidates[0].content.parts?.[0]?.text;
+      if (translation) {
+        return translation.trim().replace(/^["']|["']$/g, '');
+      } else {
+        throw new Error('No translation text received from Gemini');
+      }
+    } else {
+      throw new Error('No translation received from Gemini');
+    }
+  };
+
+  const translateText = async (): Promise<void> => {
+    if (!sourceText.trim()) return;
+    
+    if (apiKeys.length === 0) {
+      setTranslatedText('No API keys found. Please set VITE_APP_GEMINI_API_KEY (and optionally VITE_APP_GEMINI_API_KEY_1, VITE_APP_GEMINI_API_KEY_2, etc.) in your environment variables.');
+      return;
+    }
+    
+    setIsTranslating(true);
+    
+    // Initialize all key statuses
+    for (let i = 0; i < apiKeys.length; i++) {
+      initializeKeyStatus(i);
+    }
+    
+    const availableKeyIndex = getNextAvailableKey();
+    
+    if (availableKeyIndex === null) {
+      const statusSummary = getKeyStatusSummary();
+      const oldestBlockedKey = Object.entries(keyStatus)
+        .filter(([_, status]) => status.isBlocked)
+        .sort(([_, a], [__, b]) => a.blockedUntil - b.blockedUntil)[0];
+      
+      const waitTime = oldestBlockedKey 
+        ? Math.ceil((oldestBlockedKey[1].blockedUntil - Date.now()) / 1000)
+        : 60;
+      
+      setTranslatedText(`All ${apiKeys.length} API keys are currently rate-limited. Next key available in ~${waitTime}s. Status: ${statusSummary.blocked} blocked, ${statusSummary.nearLimit} near limit.`);
+      setIsTranslating(false);
+      return;
+    }
+    
+    try {
+      console.log(`Using API key ${availableKeyIndex + 1}/${apiKeys.length}`);
+      
+      const apiKey = apiKeys[availableKeyIndex];
+      const translation = await translateWithKey(apiKey);
+      
+      // Mark key as used successfully
+      updateKeyStatus(availableKeyIndex, false);
+      setCurrentKeyIndex(availableKeyIndex);
+      setTranslatedText(translation);
+      
+      console.log('Translation completed successfully');
+      
+    } catch (error: unknown) {
+      const errorMessage: string = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.warn(`API key ${availableKeyIndex + 1} failed:`, errorMessage);
+      
+      if (errorMessage === 'RATE_LIMIT') {
+        // Mark this key as rate-limited and try another
+        updateKeyStatus(availableKeyIndex, true);
+        
+        // Try to find another available key
+        const nextKeyIndex = getNextAvailableKey();
+        if (nextKeyIndex !== null && nextKeyIndex !== availableKeyIndex) {
+          console.log(`Retrying with API key ${nextKeyIndex + 1}/${apiKeys.length}`);
+          setIsTranslating(false);
+          setTimeout(() => translateText(), 100); // Small delay before retry
+          return;
+        } else {
+          const statusSummary = getKeyStatusSummary();
+          setTranslatedText(`API key ${availableKeyIndex + 1} hit rate limit. All keys currently rate-limited. Status: ${statusSummary.blocked} blocked, ${statusSummary.available} available.`);
+        }
+      } else {
+        // Handle other errors
+        if (errorMessage.includes('API_KEY_INVALID')) {
+          setTranslatedText(`Invalid API key ${availableKeyIndex + 1}. Please check your Gemini API keys in environment variables.`);
+        } else {
+          setTranslatedText(`Translation failed: ${errorMessage}`);
+        }
+      }
+    }
+    
+    setIsTranslating(false);
+  };
+
+  const swapLanguages = (): void => {
+    setSourceLang(targetLang);
+    setTargetLang(sourceLang);
+    setSourceText(translatedText);
+    setTranslatedText(sourceText);
+  };
+
+  const handleSourceTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
+    setSourceText(e.target.value);
+  };
+
+  const handleSourceLangChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
+    setSourceLang(e.target.value);
+  };
+
+  const handleTargetLangChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
+    setTargetLang(e.target.value);
+  };
+
+  const statusSummary = getKeyStatusSummary();
+
+  return (
+    <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl p-6 border border-white/20 mb-8">
+      <h3 className="text-xl font-bold text-gray-800 mb-4">
+        AI Translator
+        {apiKeys.length > 1 && (
+          <span className="text-sm font-normal text-gray-600 ml-2">
+            ({apiKeys.length} keys: {statusSummary.available} available, {statusSummary.blocked} cooling down)
+          </span>
+        )}
+      </h3>
+      
+      <div className="flex flex-col md:flex-row gap-4 mb-4">
+        <div className="flex-1">
+          <select
+            value={sourceLang}
+            onChange={handleSourceLangChange}
+            className="w-full p-2 border border-gray-300 rounded-lg mb-2"
+          >
+            {languages.map((lang: Language) => (
+              <option key={lang.code} value={lang.code}>{lang.name}</option>
+            ))}
+          </select>
+          <textarea
+            value={sourceText}
+            onChange={handleSourceTextChange}
+            placeholder="Enter text to translate..."
+            className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none"
+          />
+        </div>
+        
+        <div className="flex md:flex-col items-center justify-center gap-2">
+          <button
+            onClick={swapLanguages}
+            className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-all"
+            title="Swap languages"
+            type="button"
+          >
+            ⇄
+          </button>
+        </div>
+        
+        <div className="flex-1">
+          <select
+            value={targetLang}
+            onChange={handleTargetLangChange}
+            className="w-full p-2 border border-gray-300 rounded-lg mb-2"
+          >
+            {languages.map((lang: Language) => (
+              <option key={lang.code} value={lang.code}>{lang.name}</option>
+            ))}
+          </select>
+          <div className="w-full h-32 p-3 border border-gray-300 rounded-lg bg-gray-50 overflow-auto">
+            {isTranslating ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-200 border-t-blue-600"></div>
+                <span className="ml-2 text-gray-600">
+                  Translating with AI...
+                  {apiKeys.length > 1 && ` (${statusSummary.available}/${apiKeys.length} keys ready)`}
+                </span>
+              </div>
+            ) : (
+              <p className="text-gray-800">{translatedText}</p>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      <div className="flex justify-center">
+        <button
+          onClick={translateText}
+          disabled={!sourceText.trim() || isTranslating}
+          className="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-xl font-semibold transition-all"
+          type="button"
+        >
+          {isTranslating ? 'Translating...' : 'Translate with AI'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const MiniColorPicker: React.FC = () => {
+  const [selectedColor, setSelectedColor] = useState<string>('#3b82f6');
+  const [colorHistory, setColorHistory] = useState<string[]>(['#3b82f6', '#ef4444', '#10b981', '#f59e0b']);
+
+  const hexToRgb = (hex: string): string => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? `rgb(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)})` : 'rgb(0, 0, 0)';
+  };
+
+  const addToHistory = (color: string): void => {
+    if (!colorHistory.includes(color)) {
+      setColorHistory(prev => [color, ...prev.slice(0, 7)]);
+    }
+  };
+
+  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const newColor = e.target.value;
+    setSelectedColor(newColor);
+    addToHistory(newColor);
+  };
+
+  const handleHexInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    setSelectedColor(e.target.value);
+  };
+
+  const handleHistoryColorClick = (color: string): void => {
+    setSelectedColor(color);
+  };
+
+  return (
+    <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl p-6 border border-white/20 mb-8">
+      <h3 className="text-xl font-bold text-gray-800 mb-4">Color Picker</h3>
+      <div className="grid md:grid-cols-2 gap-6">
+        <div>
+          <div className="mb-4">
+            <div 
+              className="w-full h-32 rounded-xl border-2 border-gray-300 mb-4 shadow-inner"
+              style={{ backgroundColor: selectedColor }}
+            />
+            <input 
+              type="color" 
+              value={selectedColor} 
+              onChange={handleColorChange}
+              className="w-full h-12 rounded-lg border border-gray-300 cursor-pointer" 
+            />
+          </div>
+        </div>
+        <div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">HEX</label>
+              <input 
+                type="text" 
+                value={selectedColor} 
+                onChange={handleHexInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">RGB</label>
+              <input 
+                type="text" 
+                value={hexToRgb(selectedColor)} 
+                readOnly 
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono bg-gray-50" 
+              />
+            </div>
+          </div>
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Recent Colors</label>
+            <div className="grid grid-cols-4 gap-2">
+              {colorHistory.map((color: string, index: number) => (
+                <button 
+                  key={index} 
+                  onClick={() => handleHistoryColorClick(color)}
+                  className="w-full h-8 rounded-lg border border-gray-300 hover:scale-110 transition-transform" 
+                  style={{ backgroundColor: color }} 
+                  title={color} 
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MiniConverter = () => {
+  const [converterType, setConverterType] = useState<ConverterType>('length');
+  const [fromUnit, setFromUnit] = useState<string>('meters');
+  const [toUnit, setToUnit] = useState<string>('feet');
+  const [inputValue, setInputValue] = useState<string>('');
+  const [result, setResult] = useState<string>('');
+  const [resultFromUnit, setResultFromUnit] = useState<string>('');
+  const [resultToUnit, setResultToUnit] = useState<string>('');
+
+  const conversions: Conversions = {
+    length: {
+      units: ['meters', 'feet', 'inches', 'centimeters', 'millimeters', 'kilometers', 'miles'],
+      toMeters: {
+        meters: 1,
+        feet: 0.3048,
+        inches: 0.0254,
+        centimeters: 0.01,
+        millimeters: 0.001,
+        kilometers: 1000,
+        miles: 1609.34
+      }
+    },
+    weight: {
+      units: ['kilograms', 'pounds', 'grams', 'ounces'],
+      toKg: {
+        kilograms: 1,
+        pounds: 0.453592,
+        grams: 0.001,
+        ounces: 0.0283495
+      }
+    },
+    temperature: {
+      units: ['celsius', 'fahrenheit', 'kelvin'],
+      convert: (value: number, from: TemperatureUnit, to: TemperatureUnit): number => {
+        if (from === to) return value;
+        
+        // Convert to Celsius first
+        let celsius = value;
+        if (from === 'fahrenheit') celsius = (value - 32) * 5/9;
+        if (from === 'kelvin') celsius = value - 273.15;
+        
+        // Convert from Celsius to target
+        if (to === 'fahrenheit') return celsius * 9/5 + 32;
+        if (to === 'kelvin') return celsius + 273.15;
+        return celsius;
+      }
+    }
+  };
+
+  const convert = () => {
+    if (!inputValue) return;
+    
+    const value = parseFloat(inputValue);
+    if (isNaN(value)) return;
+    
+    let converted = 0;
+    
+    if (converterType === 'temperature') {
+      converted = conversions.temperature.convert(
+        value, 
+        fromUnit as TemperatureUnit, 
+        toUnit as TemperatureUnit
+      );
+    } else {
+      const conversionData = conversions[converterType];
+      const baseKey = converterType === 'length' ? 'toMeters' : 'toKg';
+      const baseUnit = (conversionData as any)[baseKey] as Record<string, number>;
+      const baseValue = value * baseUnit[fromUnit];
+      converted = baseValue / baseUnit[toUnit];
+    }
+    
+    setResult(converted.toFixed(4));
+    setResultFromUnit(fromUnit);
+    setResultToUnit(toUnit);
+  };
+
+  const handleConverterTypeChange = (newType: ConverterType) => {
+    setConverterType(newType);
+    const newConversion = conversions[newType];
+    setFromUnit(newConversion.units[0]);
+    setToUnit(newConversion.units[1] || newConversion.units[0]);
+    setResult('');
+  };
+
+  const getCurrentUnits = (): string[] => {
+    return conversions[converterType].units;
+  };
+
+  return (
+    <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl p-6 border border-white/20 mb-8">
+      <h3 className="text-xl font-bold text-gray-800 mb-4">Unit Converter</h3>
+      
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+          <select
+            value={converterType}
+            onChange={(e) => handleConverterTypeChange(e.target.value as ConverterType)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+          >
+            <option value="length">Length</option>
+            <option value="weight">Weight</option>
+            <option value="temperature">Temperature</option>
+          </select>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">From</label>
+            <select
+              value={fromUnit}
+              onChange={(e) => setFromUnit(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              {getCurrentUnits().map(unit => (
+                <option key={unit} value={unit}>{unit}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">To</label>
+            <select
+              value={toUnit}
+              onChange={(e) => setToUnit(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              {getCurrentUnits().map(unit => (
+                <option key={unit} value={unit}>{unit}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        
+        <div>
+          <input
+            type="number"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && convert()}
+            placeholder="Enter value to convert"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+          />
+        </div>
+        
+        <button
+          onClick={convert}
+          className="w-full px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-semibold transition-all"
+        >
+          Convert
+        </button>
+        
+        {result && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="text-center">
+              <span className="text-2xl font-bold text-green-800">
+                {inputValue} {resultFromUnit} = {result} {resultToUnit}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
   // Initialize device ID on component mount
   useEffect(() => {
@@ -81,6 +1133,10 @@ const Search: React.FC = () => {
       if (!isLoadMore) {
         setSearchParams({ query: searchQuery, searchType });
       }
+
+      const detectedTool = detectMiniTool(searchQuery);
+      setShowMiniTool(detectedTool);
+
 
       // Google Custom Search API limits to 100 total results
       // Last valid start index is 91 (results 91-100)
@@ -497,7 +1553,17 @@ const Search: React.FC = () => {
               </div>
             </div>
           )}
+{/* Mini Tools */}
+{showMiniTool && (
+  <div className="animate-in slide-in-from-top-3 duration-500">
+    {showMiniTool === 'timer' && <MiniTimer />}
+    {showMiniTool === 'calculator' && <MiniCalculator />}
+    {showMiniTool === 'translator' && <MiniTranslator />}
+    {showMiniTool === 'colorpicker' && <MiniColorPicker />}
+    {showMiniTool === 'converter' && <MiniConverter />}
 
+  </div>
+)}
           {/* Search Results */}
           {results.length > 0 && !loading && (
             <div className="mb-12 animate-in slide-in-from-bottom-4 duration-500">
