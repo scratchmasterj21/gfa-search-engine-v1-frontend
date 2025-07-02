@@ -103,7 +103,7 @@ const detectMiniTool = useCallback((searchQuery: string) => {
   }
   
   // Translator keywords
-  if (['translate', 'translator', 'translation', 'language'].some(keyword => query.includes(keyword))) {
+  if (['translate', 'translator', 'translation', 'language', '翻訳', 'ほんやく'].some(keyword => query.includes(keyword))) {
     return 'translator';
   }
 
@@ -757,7 +757,7 @@ const MiniTranslator = () => {
   return (
     <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl p-6 border border-white/20 mb-8">
       <h3 className="text-xl font-bold text-gray-800 mb-4">
-        AI Translator
+        Google Translate
         {apiKeys.length > 1 && (
           <span className="text-sm font-normal text-gray-600 ml-2">
             ({apiKeys.length} keys: {statusSummary.available} available, {statusSummary.blocked} cooling down)
@@ -810,7 +810,7 @@ const MiniTranslator = () => {
               <div className="flex items-center justify-center h-full">
                 <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-200 border-t-blue-600"></div>
                 <span className="ml-2 text-gray-600">
-                  Translating with AI...
+                  Translating...
                   {apiKeys.length > 1 && ` (${statusSummary.available}/${apiKeys.length} keys ready)`}
                 </span>
               </div>
@@ -828,7 +828,7 @@ const MiniTranslator = () => {
           className="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-xl font-semibold transition-all"
           type="button"
         >
-          {isTranslating ? 'Translating...' : 'Translate with AI'}
+          {isTranslating ? 'Translating...' : 'Translate'}
         </button>
       </div>
     </div>
