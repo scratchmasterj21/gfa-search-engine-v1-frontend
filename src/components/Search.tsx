@@ -1196,12 +1196,6 @@ const MiniConverter = () => {
     }
   }, []);
 
-  // Regenerate AI response
-  const handleRegenerateAI = useCallback(() => {
-    if (query) {
-      handleAIResponse(query);
-    }
-  }, [query, handleAIResponse]);
 
   // Create a helper function that accepts the query as a parameter
   const performSearchWithQuery = useCallback(async (searchQuery: string, page: number, isLoadMore = false) => {
@@ -1786,7 +1780,6 @@ const MiniConverter = () => {
                     isLoading={aiLoading}
                     error={aiError}
                     query={query}
-                    onRegenerate={handleRegenerateAI}
                     onCopyAnswer={handleCopyAIAnswer}
                   />
                 </div>

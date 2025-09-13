@@ -34,6 +34,7 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [isOrientationChanging, setIsOrientationChanging] = useState(false);
   const searchBarRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -49,14 +50,14 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
     }
   };
 
-  // Show suggestions when query changes
+  // Show suggestions when query changes (only if focused or has content, and not during orientation change)
   useEffect(() => {
-    if (query.trim().length > 0) {
+    if (query.trim().length > 0 && (isFocused || suggestions.length > 0) && !isOrientationChanging) {
       setShowSuggestions(true);
       updateDropdownPosition();
       console.log('Showing suggestions for query:', query);
     }
-  }, [query]);
+  }, [query, isFocused, suggestions.length, isOrientationChanging]);
 
   // Update position when suggestions show
   useEffect(() => {
@@ -65,7 +66,7 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
     }
   }, [showSuggestions]);
 
-  // Update position on window resize
+  // Update position on window resize and handle orientation changes
   useEffect(() => {
     const handleResize = () => {
       if (showSuggestions) {
@@ -73,14 +74,30 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
       }
     };
 
+    const handleOrientationChange = () => {
+      // Set orientation changing flag and hide suggestions
+      setIsOrientationChanging(true);
+      setShowSuggestions(false);
+      // Small delay to allow orientation to settle, then update position if needed
+      setTimeout(() => {
+        setIsOrientationChanging(false);
+        if (isFocused && query.trim().length > 0) {
+          setShowSuggestions(true);
+          updateDropdownPosition();
+        }
+      }, 300);
+    };
+
     window.addEventListener('resize', handleResize);
     window.addEventListener('scroll', handleResize);
+    window.addEventListener('orientationchange', handleOrientationChange);
     
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('scroll', handleResize);
+      window.removeEventListener('orientationchange', handleOrientationChange);
     };
-  }, [showSuggestions]);
+  }, [showSuggestions, isFocused, query]);
 
   // Touch gestures for mobile
   const { handleTouchStart, handleTouchEnd } = useTouchGestures({
