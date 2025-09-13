@@ -10,6 +10,7 @@ interface AIResultsCardProps {
   aiResponse: AIResponse | null;
   isLoading: boolean;
   error: string | null;
+  query?: string;
   onRegenerate?: () => void;
   onCopyAnswer?: (answer: string) => void;
 }
@@ -18,11 +19,34 @@ const AIResultsCard: React.FC<AIResultsCardProps> = ({
   aiResponse,
   isLoading,
   error,
+  query = '',
   onRegenerate,
   onCopyAnswer
 }) => {
   const { actualTheme } = useTheme();
   const [copied, setCopied] = useState(false);
+
+  // Check if the query contains Japanese characters
+  const isJapaneseQuery = (query: string) => {
+    return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(query);
+  };
+
+  // Get localized text based on query language
+  const getLocalizedText = (query: string) => {
+    const isJapanese = isJapaneseQuery(query);
+    return {
+      copyAnswer: isJapanese ? '回答をコピー' : 'Copy Answer',
+      regenerate: isJapanese ? '再生成' : 'Regenerate',
+      aiAnswer: isJapanese ? 'AI回答' : 'AI Answer',
+      relatedTopics: isJapanese ? '関連トピック' : 'Related Topics',
+      generatedAt: isJapanese ? '生成時刻' : 'Generated',
+      loading: isJapanese ? 'AIが回答を生成中...' : 'AI is generating an answer...',
+      error: isJapanese ? 'AI回答の生成中にエラーが発生しました' : 'Error generating AI response'
+    };
+  };
+
+  // Get localized text based on the query
+  const localizedText = getLocalizedText(query || aiResponse?.query || '');
 
   const handleCopyAnswer = async () => {
     if (aiResponse?.answer && onCopyAnswer) {
@@ -86,14 +110,14 @@ const AIResultsCard: React.FC<AIResultsCardProps> = ({
               <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 animate-ping opacity-20"></div>
             </div>
             <h3 className={titleClasses}>
-              AIが考えています...
+              {localizedText.loading}
             </h3>
           </div>
           
           <div className="flex items-center space-x-2">
             <LoadingSpinner size="sm" color="primary" />
             <span className={`text-sm ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              質問を分析して回答を生成しています...
+              {localizedText.loading}
             </span>
           </div>
           
@@ -116,7 +140,7 @@ const AIResultsCard: React.FC<AIResultsCardProps> = ({
               <div className="w-4 h-4 text-red-500">⚠️</div>
             </div>
             <h3 className={`${titleClasses} text-red-500`}>
-              AI一時的に利用不可
+              {localizedText.error}
             </h3>
           </div>
           
@@ -154,7 +178,7 @@ const AIResultsCard: React.FC<AIResultsCardProps> = ({
               <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 animate-pulse opacity-30"></div>
             </div>
             <h3 className={titleClasses}>
-              {aiResponse.query.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/) ? 'AI回答' : 'AI Answer'}
+              {localizedText.aiAnswer}
             </h3>
           </div>
           
@@ -177,7 +201,7 @@ const AIResultsCard: React.FC<AIResultsCardProps> = ({
         {aiResponse.sources.length > 0 && (
           <div className="mb-4">
             <h4 className={`text-sm font-semibold mb-2 ${actualTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-              {aiResponse.query.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/) ? '関連トピック:' : 'Related Topics:'}
+              {localizedText.relatedTopics}:
             </h4>
             <div className="flex flex-wrap gap-2">
               {aiResponse.sources.map((source, index) => (
@@ -222,7 +246,7 @@ const AIResultsCard: React.FC<AIResultsCardProps> = ({
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
-                  <span>回答をコピー</span>
+                  <span>{localizedText.copyAnswer}</span>
                 </>
               )}
             </button>
@@ -241,13 +265,13 @@ const AIResultsCard: React.FC<AIResultsCardProps> = ({
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                <span>再生成</span>
+                <span>{localizedText.regenerate}</span>
               </button>
             )}
           </div>
           
           <div className={`text-xs ${actualTheme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-            {aiResponse.query.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/) ? '生成時刻' : 'Generated'} {aiResponse.timestamp.toLocaleTimeString()}
+            {localizedText.generatedAt} {aiResponse.timestamp.toLocaleTimeString()}
           </div>
         </div>
       </div>

@@ -1459,6 +1459,29 @@ const MiniConverter = () => {
     };
   }, []);
 
+  // Auto-suggest functionality
+  const handleQueryChange = useCallback(async (newQuery: string) => {
+    setQuery(newQuery);
+
+    if (newQuery.trim() === '') {
+      setSuggestions([]);
+      return;
+    }
+
+    try {
+      const response = await axios.get('https://auto-suggest-queries.p.rapidapi.com/suggestqueries', {
+        params: { query: newQuery },
+        headers: {
+          'X-RapidAPI-Key': import.meta.env.VITE_APP_RAPIDAPI_KEY || '',
+          'X-RapidAPI-Host': import.meta.env.VITE_APP_RAPIDAPI_HOST || ''
+        }
+      });
+      setSuggestions(response.data || []);
+    } catch (error) {
+      console.error('Error fetching auto-suggestions:', error);
+      setSuggestions([]);
+    }
+  }, []);
 
   const handleSearch = useCallback(() => {
     console.log('Starting new search for:', query);
@@ -1477,16 +1500,26 @@ const MiniConverter = () => {
 
   const handleTabChange = (type: 'web' | 'image') => {
     console.log('Changing search type to:', type);
-    setSearchType(type);
-    setCurrentPage(1);
-    setHasMore(true);
-    setResults([]);
     
-    // Clear AI state when switching to image search
-    if (type === 'image') {
-      setAiResponse(null);
-      setAiLoading(false);
-      setAiError(null);
+    // Only clear results if we have a query to search with
+    if (query.trim()) {
+      setSearchType(type);
+      setCurrentPage(1);
+      setHasMore(true);
+      setResults([]);
+      
+      // Clear AI state when switching to image search
+      if (type === 'image') {
+        setAiResponse(null);
+        setAiLoading(false);
+        setAiError(null);
+      }
+      
+      // Perform new search with the same query but different type
+      performSearchWithQuery(query, 1, false);
+    } else {
+      // Just change the type if no query
+      setSearchType(type);
     }
   };
 
@@ -1575,7 +1608,7 @@ const MiniConverter = () => {
               }`}>
                 <ResponsiveSearchBar
                   query={query}
-                  onQueryChange={setQuery}
+                  onQueryChange={handleQueryChange}
                   onSearch={handleSearchClick}
                   onFocus={() => {}}
                   onBlur={() => {}}
@@ -1593,8 +1626,8 @@ const MiniConverter = () => {
                 visible={tabsVisible}
               />
 
-              {/* Loading State */}
-              {loading && (
+              {/* Loading State - Only show for image search or when no query */}
+              {loading && !aiLoading && (searchType === 'image' || !query.trim()) && (
                 <div className="text-center py-16 animate-in fade-in duration-300">
                   <div className="inline-flex flex-col items-center">
                     <div className="relative mb-6">
@@ -1602,7 +1635,7 @@ const MiniConverter = () => {
                       <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-4 border-purple-400/50"></div>
                     </div>
                     <span className="text-white font-bold text-xl bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
-                      Searching the cosmos...
+                      {searchType === 'image' ? 'Searching for images...' : 'Searching the cosmos...'}
                     </span>
                     <PulsingDots count={3} color="white" className="mt-2" />
                   </div>
@@ -1646,9 +1679,25 @@ const MiniConverter = () => {
                     aiResponse={aiResponse}
                     isLoading={aiLoading}
                     error={aiError}
+                    query={query}
                     onRegenerate={handleRegenerateAI}
                     onCopyAnswer={handleCopyAIAnswer}
                   />
+                </div>
+              )}
+
+              {/* Show main loading only if AI is not loading and we have a query */}
+              {loading && !aiLoading && query.trim() && searchType === 'web' && (
+                <div className="text-center py-8 animate-in fade-in duration-300">
+                  <div className="inline-flex flex-col items-center">
+                    <div className="relative mb-4">
+                      <LoadingSpinner size="lg" color="white" />
+                      <div className="absolute inset-0 animate-ping rounded-full h-12 w-12 border-4 border-purple-400/50"></div>
+                    </div>
+                    <span className="text-white font-medium bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                      Loading search results...
+                    </span>
+                  </div>
                 </div>
               )}
 
@@ -1757,9 +1806,26 @@ const MiniConverter = () => {
                     ? 'bg-gray-800/20 border-gray-700/30' 
                     : 'bg-white/20 border-white/30'
                 }`}>
-                  <div className="flex items-center text-sm font-medium">
-                    <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
-                    {results.length} results found
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center text-sm font-medium">
+                      <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+                      {results.length} results found
+                    </div>
+                    <button
+                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                      className={`
+                        flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 hover:scale-110
+                        ${actualTheme === 'dark' 
+                          ? 'bg-purple-600/80 hover:bg-purple-500/90 text-white' 
+                          : 'bg-purple-600/80 hover:bg-purple-500/90 text-white'
+                        }
+                      `}
+                      title="Go to top"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               )}

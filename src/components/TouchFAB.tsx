@@ -113,6 +113,22 @@ const TouchFAB: React.FC<TouchFABProps> = ({
               <span className="text-xs font-bold">{resultsCount}</span>
             </div>
           )}
+
+          {/* Go to Top */}
+          <button
+            onClick={handleScrollToTop}
+            className={`
+              flex items-center justify-center w-12 h-12 rounded-full shadow-lg transition-all duration-300 touch-target
+              ${actualTheme === 'dark' 
+                ? 'bg-purple-600 hover:bg-purple-700 text-white' 
+                : 'bg-purple-600 hover:bg-purple-700 text-white'
+              }
+            `}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+            </svg>
+          </button>
         </div>
       )}
 
