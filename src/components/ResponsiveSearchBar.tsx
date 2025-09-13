@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useResponsive } from '../hooks/useResponsive';
 import { useTouchGestures, useHapticFeedback } from '../hooks/useTouchGestures';
 import { useTheme } from '../contexts/ThemeContext';
@@ -32,8 +33,54 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
   const { triggerHaptic } = useHapticFeedback();
   const [isFocused, setIsFocused] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const searchBarRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Calculate dropdown position
+  const updateDropdownPosition = () => {
+    if (searchBarRef.current) {
+      const rect = searchBarRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 8,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    }
+  };
+
+  // Show suggestions when query changes
+  useEffect(() => {
+    if (query.trim().length > 0) {
+      setShowSuggestions(true);
+      updateDropdownPosition();
+      console.log('Showing suggestions for query:', query);
+    }
+  }, [query]);
+
+  // Update position when suggestions show
+  useEffect(() => {
+    if (showSuggestions) {
+      updateDropdownPosition();
+    }
+  }, [showSuggestions]);
+
+  // Update position on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (showSuggestions) {
+        updateDropdownPosition();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleResize);
+    };
+  }, [showSuggestions]);
 
   // Touch gestures for mobile
   const { handleTouchStart, handleTouchEnd } = useTouchGestures({
@@ -67,6 +114,17 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
     // Delay hiding suggestions to allow clicks
     setTimeout(() => setShowSuggestions(false), 200);
     onBlur?.();
+  };
+
+  // Handle input change - show suggestions when typing
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    onQueryChange(newValue);
+    
+    // Show suggestions when user is typing
+    if (newValue.trim().length > 0) {
+      setShowSuggestions(true);
+    }
   };
 
   // Handle search
@@ -160,7 +218,7 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
   };
 
   return (
-    <div className="relative w-full max-w-4xl mx-auto">
+    <div className="relative w-full max-w-4xl mx-auto" style={{ zIndex: 1000 }}>
       <div 
         ref={searchBarRef}
         className={getSearchBarClasses()}
@@ -177,7 +235,7 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
           ref={inputRef}
           type="text"
           value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
+          onChange={handleInputChange}
           onKeyDown={handleKeyPress}
           onFocus={handleFocus}
           onBlur={handleBlur}
@@ -202,38 +260,64 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
         </button>
       </div>
 
-      {/* Suggestions Dropdown */}
-      {showSuggestions && suggestions.length > 0 && (
-        <div className={`
-          absolute top-full left-0 right-0 mt-2 backdrop-blur-md border rounded-2xl shadow-2xl z-50 max-h-80 overflow-y-auto animate-slide-in-top
-          ${actualTheme === 'dark' 
-            ? 'bg-gray-800/95 border-gray-700/50' 
-            : 'bg-white/95 border-white/20'
-          }
-        `}>
-          {suggestions.map((suggestion, index) => (
-            <button
-              key={index}
-              onClick={() => handleSuggestionClick(suggestion)}
-              className={`
-                w-full px-6 py-4 text-left transition-all duration-200 border-b last:border-b-0 font-medium first:rounded-t-2xl last:rounded-b-2xl
-                ${actualTheme === 'dark' 
-                  ? 'hover:bg-gradient-to-r hover:from-purple-900/30 hover:to-cyan-900/30 border-gray-700/50 text-gray-200' 
-                  : 'hover:bg-gradient-to-r hover:from-purple-50 hover:to-cyan-50 border-gray-100/50 text-gray-800'
-                }
-                ${isMobile ? 'py-3' : 'py-4'}
-              `}
-            >
-              <div className="flex items-center">
-                <div className="w-5 h-5 mr-3 rounded-full bg-gradient-to-r from-purple-400 to-cyan-400 flex items-center justify-center">
-                  <SearchIcon className="w-3 h-3 text-white" />
+      {/* Suggestions Dropdown - Rendered via Portal */}
+      {(() => {
+        const shouldShow = showSuggestions && (suggestions.length > 0 || query.trim().length > 0);
+        console.log('Suggestions debug:', { showSuggestions, suggestionsLength: suggestions.length, queryLength: query.trim().length, shouldShow });
+        
+        if (!shouldShow) return null;
+        
+        const suggestionsList = suggestions.length > 0 ? suggestions : [
+          `${query} meaning`,
+          `${query} definition`,
+          `what is ${query}`,
+          `${query} examples`,
+          `${query} tutorial`
+        ];
+        
+        return createPortal(
+          <div 
+            className={`
+              fixed backdrop-blur-md border rounded-2xl shadow-2xl z-[9999] overflow-y-auto animate-slide-in-top
+              ${actualTheme === 'dark' 
+                ? 'bg-gray-800/95 border-gray-700/50' 
+                : 'bg-white/95 border-white/20'
+              }
+              ${isMobile ? 'max-h-60' : 'max-h-80'}
+              ${isMobile && isPortrait ? 'max-h-48' : ''}
+            `}
+            style={{
+              top: dropdownPosition.top,
+              left: dropdownPosition.left,
+              width: dropdownPosition.width,
+              maxWidth: '90vw'
+            }}
+          >
+            {suggestionsList.map((suggestion, index) => (
+              <button
+                key={index}
+                onClick={() => handleSuggestionClick(suggestion)}
+                className={`
+                  w-full px-6 py-4 text-left transition-all duration-200 border-b last:border-b-0 font-medium first:rounded-t-2xl last:rounded-b-2xl
+                  ${actualTheme === 'dark' 
+                    ? 'hover:bg-gradient-to-r hover:from-purple-900/30 hover:to-cyan-900/30 border-gray-700/50 text-gray-200' 
+                    : 'hover:bg-gradient-to-r hover:from-purple-50 hover:to-cyan-50 border-gray-100/50 text-gray-800'
+                  }
+                  ${isMobile ? 'py-3' : 'py-4'}
+                `}
+              >
+                <div className="flex items-center">
+                  <div className="w-5 h-5 mr-3 rounded-full bg-gradient-to-r from-purple-400 to-cyan-400 flex items-center justify-center">
+                    <SearchIcon className="w-3 h-3 text-white" />
+                  </div>
+                  <span className="truncate">{suggestion}</span>
                 </div>
-                <span className="truncate">{suggestion}</span>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+              </button>
+            ))}
+          </div>,
+          document.body
+        );
+      })()}
     </div>
   );
 };

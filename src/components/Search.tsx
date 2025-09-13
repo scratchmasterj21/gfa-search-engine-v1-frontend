@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { useSearchParams } from 'react-router-dom';
 import { logSearch, getDeviceId } from './firebase'; // Import the logging function
@@ -13,7 +14,6 @@ import ResponsiveResultGrid from './ResponsiveResultGrid';
 import ResponsiveNavigation from './ResponsiveNavigation';
 import TouchFAB from './TouchFAB';
 import PullToRefresh from './PullToRefresh';
-import MobileBottomNav from './MobileBottomNav';
 import { aiService, AIResponse } from '../services/aiService';
 import { 
   LoadingSpinner, 
@@ -1459,6 +1459,62 @@ const MiniConverter = () => {
     };
   }, []);
 
+  // Handle scroll restoration when image modal is closed
+  useEffect(() => {
+    if (!selectedImage) {
+      // Restore scroll when modal is closed
+      const scrollY = document.body.getAttribute('data-scroll-y');
+      
+      // Remove scroll prevention
+      const preventScroll = (document.body as any).__preventScroll;
+      if (preventScroll) {
+        document.removeEventListener('scroll', preventScroll);
+        document.removeEventListener('wheel', preventScroll);
+        document.removeEventListener('touchmove', preventScroll);
+        delete (document.body as any).__preventScroll;
+      }
+      
+      // Restore body styles
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
+      
+      // Restore html styles
+      document.documentElement.style.overflow = '';
+      
+      if (scrollY) {
+        // Restore scroll position
+        window.scrollTo(0, parseInt(scrollY));
+        document.body.removeAttribute('data-scroll-y');
+      }
+    }
+
+    return () => {
+      // Cleanup on unmount
+      const preventScroll = (document.body as any).__preventScroll;
+      if (preventScroll) {
+        document.removeEventListener('scroll', preventScroll);
+        document.removeEventListener('wheel', preventScroll);
+        document.removeEventListener('touchmove', preventScroll);
+        delete (document.body as any).__preventScroll;
+      }
+      
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
+      document.documentElement.style.overflow = '';
+      document.body.removeAttribute('data-scroll-y');
+    };
+  }, [selectedImage]);
+
   // Auto-suggest functionality
   const handleQueryChange = useCallback(async (newQuery: string) => {
     setQuery(newQuery);
@@ -1468,6 +1524,15 @@ const MiniConverter = () => {
       return;
     }
 
+    // Fallback suggestions for common queries
+    const fallbackSuggestions = [
+      `${newQuery} meaning`,
+      `${newQuery} definition`,
+      `what is ${newQuery}`,
+      `${newQuery} examples`,
+      `${newQuery} tutorial`
+    ];
+
     try {
       const response = await axios.get('https://auto-suggest-queries.p.rapidapi.com/suggestqueries', {
         params: { query: newQuery },
@@ -1476,10 +1541,11 @@ const MiniConverter = () => {
           'X-RapidAPI-Host': import.meta.env.VITE_APP_RAPIDAPI_HOST || ''
         }
       });
-      setSuggestions(response.data || []);
+      setSuggestions(response.data || fallbackSuggestions);
     } catch (error) {
       console.error('Error fetching auto-suggestions:', error);
-      setSuggestions([]);
+      // Use fallback suggestions when API fails
+      setSuggestions(fallbackSuggestions);
     }
   }, []);
 
@@ -1537,6 +1603,46 @@ const MiniConverter = () => {
     // Call performSearchWithQuery with the suggestion directly
     performSearchWithQuery(suggestion, 1, false);
   };
+
+  // Handle image click with viewport position capture
+  const handleImageClick = useCallback((image: SearchResult) => {
+    // Capture current scroll position before opening modal
+    const currentScrollY = window.scrollY;
+    console.log('Modal scroll position captured:', currentScrollY);
+    
+    // Immediately lock the scroll to prevent any movement
+    // Use multiple methods to ensure scroll is locked
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${currentScrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+    document.body.style.height = '100%';
+    
+    // Also lock the html element
+    document.documentElement.style.overflow = 'hidden';
+    
+    // Store scroll position for restoration
+    document.body.setAttribute('data-scroll-y', currentScrollY.toString());
+    
+    // Prevent any scroll events
+    const preventScroll = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    };
+    
+    // Add scroll prevention
+    document.addEventListener('scroll', preventScroll, { passive: false });
+    document.addEventListener('wheel', preventScroll, { passive: false });
+    document.addEventListener('touchmove', preventScroll, { passive: false });
+    
+    // Store the prevent function for cleanup
+    (document.body as any).__preventScroll = preventScroll;
+    
+    setSelectedImage(image);
+  }, []);
 
   return (
     <ResponsiveLayout>
@@ -1604,7 +1710,7 @@ const MiniConverter = () => {
             }`}>
               {/* Search Section */}
               <div className={`relative transition-all duration-300 ${
-                isMobile ? 'mb-4' : 'mb-8'
+                isMobile ? 'mb-6' : 'mb-8'
               }`}>
                 <ResponsiveSearchBar
                   query={query}
@@ -1707,7 +1813,7 @@ const MiniConverter = () => {
                   <ResponsiveResultGrid
                     results={results}
                     searchType={searchType}
-                    onImageClick={setSelectedImage}
+                    onImageClick={handleImageClick}
                     loading={loading}
                   />
                 </div>
@@ -1764,42 +1870,82 @@ const MiniConverter = () => {
               )}
             </div>
 
-            {/* Image Modal */}
-            {selectedImage && (
+            {/* Image Modal - Rendered via Portal */}
+            {selectedImage && createPortal(
               <div
-                className="fixed inset-0 bg-black bg-opacity-90 flex justify-center items-center z-50 p-4"
-                onClick={() => setSelectedImage(null)}
+                className="fixed bg-black bg-opacity-90 flex justify-center items-center z-[9999] p-1 sm:p-4"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) {
+                    setSelectedImage(null);
+                  }
+                }}
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  width: '100vw',
+                  height: '100vh',
+                  transform: 'translateZ(0)', // Force hardware acceleration
+                  backfaceVisibility: 'hidden',
+                  // Ensure it covers the entire viewport regardless of scroll position
+                  margin: 0,
+                  padding: 0,
+                  // Force it to be above everything
+                  zIndex: 9999
+                }}
               >
                 <div
-                  className="bg-white rounded-2xl shadow-2xl w-full h-full max-w-7xl max-h-[95vh] overflow-hidden relative animate-in zoom-in duration-200 flex flex-col"
+                  className={`bg-white shadow-2xl overflow-hidden relative animate-in zoom-in duration-200 flex flex-col ${
+                    isMobile 
+                      ? 'w-[calc(100vw-1rem)] h-[calc(100vh-1rem)] rounded-lg' 
+                      : 'w-[90vw] h-[90vh] max-w-7xl max-h-[90vh] rounded-2xl'
+                  }`}
                   onClick={(e) => e.stopPropagation()}
+                  style={{
+                    // Ensure the modal is centered in the viewport
+                    margin: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}
                 >
                   <button
-                    className="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 z-10 shadow-lg hover:scale-110"
+                    className={`absolute bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all duration-200 z-10 shadow-lg hover:scale-110 ${
+                      isMobile 
+                        ? 'top-2 right-2 w-8 h-8 text-sm' 
+                        : 'top-4 right-4 w-10 h-10'
+                    }`}
                     onClick={() => setSelectedImage(null)}
                   >
                     ✕
                   </button>
                   
                   {/* Image Container - Takes up most of the modal space */}
-                  <div className="flex-1 overflow-auto bg-gray-50 flex items-center justify-center p-4">
+                  <div className={`flex-1 overflow-auto bg-gray-50 flex items-center justify-center ${
+                    isMobile ? 'p-1' : 'p-4'
+                  }`}>
                     <img 
                       src={selectedImage.image} 
                       alt="Full-size preview" 
                       className="max-w-full max-h-full object-contain shadow-lg"
                       style={{ 
-                        minHeight: '200px', // Ensure minimum height for very small images
+                        minHeight: isMobile ? '150px' : '200px', // Smaller minimum height on mobile
                         width: 'auto',
-                        height: 'auto'
+                        height: 'auto',
+                        maxWidth: '100%',
+                        maxHeight: '100%'
                       }}
                     />
                   </div>
                 </div>
-              </div>
+              </div>,
+              document.body
             )}
 
-            {/* Floating elements for extra visual flair */}
-            <div className="fixed bottom-8 right-8 z-40">
+            {/* Floating elements for extra visual flair - Hidden on mobile to avoid conflict with TouchFAB */}
+            {!isMobile && (
+              <div className="fixed bottom-8 right-8 z-40">
               {results.length > 0 && (
                 <div className={`backdrop-blur-md text-white px-4 py-2 rounded-xl border shadow-lg animate-in slide-in-from-bottom-5 duration-500 ${
                   actualTheme === 'dark' 
@@ -1829,29 +1975,21 @@ const MiniConverter = () => {
                   </div>
                 </div>
               )}
-            </div>
+              </div>
+            )}
 
             {/* Mobile Components */}
-            <TouchFAB
-              onScrollToTop={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              onLoadMore={loadMoreResults}
-              hasMore={hasMore}
-              loadingMore={loadingMore}
-              resultsCount={results.length}
-            />
+            {results.length > 0 && (
+              <>
+                {/* TouchFAB with always visible result counter and go to top */}
+                <TouchFAB
+                  onScrollToTop={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  resultsCount={results.length}
+                />
+              </>
+            )}
 
-            <MobileBottomNav
-              searchType={searchType}
-              onSearchTypeChange={handleTabChange}
-              onHomeClick={() => {
-                setQuery('');
-                setResults([]);
-                setAiResponse(null);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              resultsCount={results.length}
-              visible={results.length > 0}
-            />
+
           </div>
           </PullToRefresh>
         </div>
