@@ -1,0 +1,241 @@
+import React, { useState, useRef } from 'react';
+import { useResponsive } from '../hooks/useResponsive';
+import { useTouchGestures, useHapticFeedback } from '../hooks/useTouchGestures';
+import { useTheme } from '../contexts/ThemeContext';
+import { SearchIcon, RocketIcon } from './AnimatedIcons';
+
+interface ResponsiveSearchBarProps {
+  query: string;
+  onQueryChange: (query: string) => void;
+  onSearch: () => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  placeholder?: string;
+  suggestions?: string[];
+  onSuggestionClick?: (suggestion: string) => void;
+  isLoading?: boolean;
+}
+
+const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
+  query,
+  onQueryChange,
+  onSearch,
+  onFocus,
+  onBlur,
+  placeholder = "Search the universe...",
+  suggestions = [],
+  onSuggestionClick,
+  isLoading = false
+}) => {
+  const { isMobile, isTablet, isPortrait } = useResponsive();
+  const { actualTheme } = useTheme();
+  const { triggerHaptic } = useHapticFeedback();
+  const [isFocused, setIsFocused] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchBarRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Touch gestures for mobile
+  const { handleTouchStart, handleTouchEnd } = useTouchGestures({
+    onSwipeUp: () => {
+      if (isMobile && isFocused) {
+        inputRef.current?.blur();
+        triggerHaptic('light');
+      }
+    },
+    onSwipeDown: () => {
+      if (isMobile && !isFocused) {
+        inputRef.current?.focus();
+        triggerHaptic('light');
+      }
+    }
+  });
+
+  // Handle focus
+  const handleFocus = () => {
+    setIsFocused(true);
+    setShowSuggestions(true);
+    onFocus?.();
+    if (isMobile) {
+      triggerHaptic('light');
+    }
+  };
+
+  // Handle blur
+  const handleBlur = () => {
+    setIsFocused(false);
+    // Delay hiding suggestions to allow clicks
+    setTimeout(() => setShowSuggestions(false), 200);
+    onBlur?.();
+  };
+
+  // Handle search
+  const handleSearch = () => {
+    onSearch();
+    if (isMobile) {
+      triggerHaptic('medium');
+    }
+  };
+
+  // Handle suggestion click
+  const handleSuggestionClick = (suggestion: string) => {
+    onSuggestionClick?.(suggestion);
+    setShowSuggestions(false);
+    if (isMobile) {
+      triggerHaptic('light');
+    }
+  };
+
+  // Handle key press
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  // Get responsive classes
+  const getSearchBarClasses = () => {
+    const baseClasses = 'flex items-stretch backdrop-blur-md rounded-2xl shadow-2xl transition-all duration-300 border';
+    const themeClasses = actualTheme === 'dark' 
+      ? 'bg-gray-800/95 border-gray-700/50 hover:border-gray-600/50' 
+      : 'bg-white/95 border-white/20 hover:border-purple-300/50';
+    const focusClasses = isFocused ? 'ring-2 ring-purple-400/50 shadow-purple-500/30' : '';
+    
+    let sizeClasses = '';
+    if (isMobile) {
+      sizeClasses = isPortrait ? 'rounded-xl' : 'rounded-lg';
+    } else if (isTablet) {
+      sizeClasses = 'rounded-2xl';
+    } else {
+      sizeClasses = 'rounded-2xl';
+    }
+    
+    return `${baseClasses} ${themeClasses} ${focusClasses} ${sizeClasses}`;
+  };
+
+  const getInputClasses = () => {
+    const baseClasses = 'flex-1 outline-none bg-transparent font-medium transition-all duration-300';
+    const themeClasses = actualTheme === 'dark' 
+      ? 'placeholder-gray-400 text-gray-100' 
+      : 'placeholder-gray-500 text-gray-800';
+    
+    let sizeClasses = '';
+    if (isMobile) {
+      sizeClasses = isPortrait ? 'text-base px-3 py-3' : 'text-sm px-2 py-2';
+    } else if (isTablet) {
+      sizeClasses = 'text-lg px-4 py-4';
+    } else {
+      sizeClasses = 'text-lg px-4 py-4';
+    }
+    
+    return `${baseClasses} ${themeClasses} ${sizeClasses}`;
+  };
+
+  const getButtonClasses = () => {
+    const baseClasses = 'bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white transition-all duration-300 font-semibold whitespace-nowrap shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95';
+    
+    let sizeClasses = '';
+    if (isMobile) {
+      sizeClasses = isPortrait 
+        ? 'px-6 py-3 rounded-r-xl' 
+        : 'px-4 py-2 rounded-r-lg';
+    } else if (isTablet) {
+      sizeClasses = 'px-8 py-4 rounded-r-2xl';
+    } else {
+      sizeClasses = 'px-8 py-4 rounded-r-2xl';
+    }
+    
+    return `${baseClasses} ${sizeClasses}`;
+  };
+
+  const getIconClasses = () => {
+    let sizeClasses = '';
+    if (isMobile) {
+      sizeClasses = isPortrait ? 'w-5 h-5' : 'w-4 h-4';
+    } else {
+      sizeClasses = 'w-5 h-5';
+    }
+    
+    return `${sizeClasses} ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`;
+  };
+
+  return (
+    <div className="relative w-full max-w-4xl mx-auto">
+      <div 
+        ref={searchBarRef}
+        className={getSearchBarClasses()}
+        onTouchStart={handleTouchStart as any}
+        onTouchEnd={handleTouchEnd as any}
+      >
+        {/* Search Icon */}
+        <div className={`flex items-center ${isMobile ? 'pl-4' : 'pl-6'}`}>
+          <SearchIcon className={getIconClasses()} />
+        </div>
+
+        {/* Input */}
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          onKeyDown={handleKeyPress}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          placeholder={placeholder}
+          className={getInputClasses()}
+        />
+
+        {/* Search Button */}
+        <button
+          onClick={handleSearch}
+          disabled={isLoading}
+          className={getButtonClasses()}
+        >
+          {isMobile && isPortrait ? (
+            <span className="text-lg">🚀</span>
+          ) : (
+            <span className="flex items-center">
+              <span className="hidden sm:inline">Search</span>
+              <RocketIcon className="w-4 h-4 ml-2" />
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Suggestions Dropdown */}
+      {showSuggestions && suggestions.length > 0 && (
+        <div className={`
+          absolute top-full left-0 right-0 mt-2 backdrop-blur-md border rounded-2xl shadow-2xl z-50 max-h-80 overflow-y-auto animate-slide-in-top
+          ${actualTheme === 'dark' 
+            ? 'bg-gray-800/95 border-gray-700/50' 
+            : 'bg-white/95 border-white/20'
+          }
+        `}>
+          {suggestions.map((suggestion, index) => (
+            <button
+              key={index}
+              onClick={() => handleSuggestionClick(suggestion)}
+              className={`
+                w-full px-6 py-4 text-left transition-all duration-200 border-b last:border-b-0 font-medium first:rounded-t-2xl last:rounded-b-2xl
+                ${actualTheme === 'dark' 
+                  ? 'hover:bg-gradient-to-r hover:from-purple-900/30 hover:to-cyan-900/30 border-gray-700/50 text-gray-200' 
+                  : 'hover:bg-gradient-to-r hover:from-purple-50 hover:to-cyan-50 border-gray-100/50 text-gray-800'
+                }
+                ${isMobile ? 'py-3' : 'py-4'}
+              `}
+            >
+              <div className="flex items-center">
+                <div className="w-5 h-5 mr-3 rounded-full bg-gradient-to-r from-purple-400 to-cyan-400 flex items-center justify-center">
+                  <SearchIcon className="w-3 h-3 text-white" />
+                </div>
+                <span className="truncate">{suggestion}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ResponsiveSearchBar;
