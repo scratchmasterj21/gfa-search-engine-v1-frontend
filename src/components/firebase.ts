@@ -203,18 +203,31 @@ export const getDeviceId = async (): Promise<string> => {
 export const initializeDeviceRegistration = async (): Promise<void> => {
   try {
     const deviceId = await getDeviceId();
-    // Update lastSeen timestamp in Firebase
     const deviceRef = ref(database, `deviceRegistry/${deviceId}`);
-    await set(deviceRef, {
-      deviceId: deviceId,
-      deviceName: deviceId,
-      isNamed: false,
-      firstVisit: new Date().toISOString(),
-      lastSeen: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-      screenResolution: `${screen.width}x${screen.height}`,
-      hardwareConcurrency: navigator.hardwareConcurrency
-    });
+    
+    // Check if device already exists
+    const snapshot = await get(deviceRef);
+    
+    if (snapshot.exists()) {
+      // Device exists - only update lastSeen timestamp
+      const existingData = snapshot.val();
+      await set(deviceRef, {
+        ...existingData, // Keep all existing data
+        lastSeen: new Date().toISOString() // Only update lastSeen
+      });
+    } else {
+      // New device - create initial registration
+      await set(deviceRef, {
+        deviceId: deviceId,
+        deviceName: deviceId,
+        isNamed: false,
+        firstVisit: new Date().toISOString(),
+        lastSeen: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        screenResolution: `${screen.width}x${screen.height}`,
+        hardwareConcurrency: navigator.hardwareConcurrency
+      });
+    }
   } catch (error) {
     console.warn('Device registration failed:', error);
   }
