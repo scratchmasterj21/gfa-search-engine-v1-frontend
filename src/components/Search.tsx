@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { useSearchParams } from 'react-router-dom';
-import { logSearch } from './firebase'; // Import the logging function
+import { logSearch, initializeDeviceRegistration } from './firebase'; // Import the logging function
 import { useTheme } from '../contexts/ThemeContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { useTouchGestures, useHapticFeedback } from '../hooks/useTouchGestures';
@@ -1141,6 +1141,11 @@ const MiniConverter = () => {
   );
 };
 
+
+  // Initialize device registration on component mount
+  useEffect(() => {
+    initializeDeviceRegistration();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

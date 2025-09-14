@@ -199,6 +199,27 @@ export const getDeviceId = async (): Promise<string> => {
   return deviceId;
 };
 
+// Auto-register device on website load
+export const initializeDeviceRegistration = async (): Promise<void> => {
+  try {
+    const deviceId = await getDeviceId();
+    // Update lastSeen timestamp in Firebase
+    const deviceRef = ref(database, `deviceRegistry/${deviceId}`);
+    await set(deviceRef, {
+      deviceId: deviceId,
+      deviceName: deviceId,
+      isNamed: false,
+      firstVisit: new Date().toISOString(),
+      lastSeen: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      screenResolution: `${screen.width}x${screen.height}`,
+      hardwareConcurrency: navigator.hardwareConcurrency
+    });
+  } catch (error) {
+    console.warn('Device registration failed:', error);
+  }
+};
+
 // Search logging function
 // Search logging function - Updated to include full results data
 export const logSearch = async (query: string, searchType: 'web' | 'image', originalResults: any[]) => {
