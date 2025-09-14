@@ -1197,9 +1197,12 @@ const MiniConverter = () => {
   }, []);
 
 
-  // Create a helper function that accepts the query as a parameter
-  const performSearchWithQuery = useCallback(async (searchQuery: string, page: number, isLoadMore = false) => {
+  // Create a helper function that accepts the query and search type as parameters
+  const performSearchWithQuery = useCallback(async (searchQuery: string, page: number, isLoadMore = false, searchTypeParam?: 'web' | 'image') => {
     if (!searchQuery) return;
+
+    // Use the provided search type or fall back to current state
+    const currentSearchType = searchTypeParam || searchType;
 
     // Prevent multiple simultaneous requests using state
     if (loading || loadingMore) {
@@ -1225,7 +1228,7 @@ const MiniConverter = () => {
       
       // Update URL only for new searches, not for load more
       if (!isLoadMore) {
-        setSearchParams({ query: searchQuery, searchType });
+        setSearchParams({ query: searchQuery, searchType: currentSearchType });
       }
 
       const detectedTool = detectMiniTool(searchQuery);
@@ -1240,14 +1243,14 @@ const MiniConverter = () => {
         return;
       }
 
-      console.log(`Fetching page ${page}, startIndex: ${startIndex}`);
+      console.log(`Fetching page ${page}, startIndex: ${startIndex}, searchType: ${currentSearchType}`);
 
       const response = await axios.get<{ items: any[] }>(
         `https://backend.carlo587-jcl.workers.dev/search`,
         {
           params: {
             query: searchQuery,
-            searchType: searchType,
+            searchType: currentSearchType,
             start: startIndex,
           },
         }
@@ -1288,8 +1291,8 @@ const MiniConverter = () => {
       setHasMore(hasMoreResults);
 
       const formattedResults = originalResults.map((item) => ({
-        title: searchType === 'web' ? item.title : undefined,
-        snippet: searchType === 'web' ? item.snippet : undefined,
+        title: currentSearchType === 'web' ? item.title : undefined,
+        snippet: currentSearchType === 'web' ? item.snippet : undefined,
         link: item.link,
         thumbnail: item.pagemap?.cse_thumbnail?.[0]?.src || item.pagemap?.metatags?.[0]?.['og:image'] || item.link,
         image: item.pagemap?.cse_image?.[0]?.src || item.pagemap?.metatags?.[0]?.['og:image'] || item.link,
@@ -1310,7 +1313,7 @@ const MiniConverter = () => {
       }
 
       // Log the search to Firebase (only for new searches, not pagination)
-      await logSearch(searchQuery, searchType, originalResults);
+      await logSearch(searchQuery, currentSearchType, originalResults);
     
 
     } catch (error) {
@@ -1576,7 +1579,8 @@ const MiniConverter = () => {
       }
       
       // Perform new search with the same query but different type
-      performSearchWithQuery(query, 1, false);
+      // Pass the new search type explicitly to avoid race condition
+      performSearchWithQuery(query, 1, false, type);
     } else {
       // Just change the type if no query
       setSearchType(type);
