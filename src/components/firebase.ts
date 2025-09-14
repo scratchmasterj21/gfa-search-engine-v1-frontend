@@ -1,6 +1,6 @@
 // firebase.ts
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, push, serverTimestamp } from 'firebase/database';
+import { getDatabase, ref, push, serverTimestamp, set, get } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -16,16 +16,186 @@ const app = initializeApp(firebaseConfig);
 export const database = getDatabase(app);
 
 // Device ID utilities
+
+// IndexedDB storage functions
+const openIndexedDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('DeviceStorageDB', 1);
+    
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains('deviceData')) {
+        db.createObjectStore('deviceData');
+      }
+    };
+  });
+};
+
+const saveToIndexedDB = async (key: string, value: string): Promise<void> => {
+  try {
+    const db = await openIndexedDB();
+    const transaction = db.transaction(['deviceData'], 'readwrite');
+    const store = transaction.objectStore('deviceData');
+    store.put(value, key);
+  } catch (error) {
+    console.warn('IndexedDB save failed:', error);
+  }
+};
+
+const getFromIndexedDB = async (key: string): Promise<string | null> => {
+  try {
+    const db = await openIndexedDB();
+    const transaction = db.transaction(['deviceData'], 'readonly');
+    const store = transaction.objectStore('deviceData');
+    const request = store.get(key);
+    
+    return new Promise((resolve) => {
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => resolve(null);
+    });
+  } catch (error) {
+    console.warn('IndexedDB get failed:', error);
+    return null;
+  }
+};
+
+// Firebase storage functions
+const saveToFirebase = async (deviceId: string): Promise<void> => {
+  try {
+    const deviceRef = ref(database, `deviceRegistry/${deviceId}`);
+    await set(deviceRef, {
+      deviceId: deviceId,
+      deviceName: deviceId,
+      isNamed: false,
+      firstVisit: new Date().toISOString(),
+      lastSeen: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      screenResolution: `${screen.width}x${screen.height}`,
+      hardwareConcurrency: navigator.hardwareConcurrency
+    });
+  } catch (error) {
+    console.warn('Firebase save failed:', error);
+  }
+};
+
+const getFromFirebase = async (): Promise<string | null> => {
+  try {
+    // Get all devices and find the most recent one
+    const devicesRef = ref(database, 'deviceRegistry');
+    const snapshot = await get(devicesRef);
+    
+    if (snapshot.exists()) {
+      const devices = snapshot.val();
+      let mostRecentDevice = null;
+      let mostRecentTime = 0;
+      
+      // Find the device with the most recent lastSeen timestamp
+      for (const [deviceId, deviceData] of Object.entries(devices)) {
+        const data = deviceData as any;
+        if (data.lastSeen) {
+          const lastSeenTime = new Date(data.lastSeen).getTime();
+          if (lastSeenTime > mostRecentTime) {
+            mostRecentTime = lastSeenTime;
+            mostRecentDevice = deviceId;
+          }
+        }
+      }
+      
+      return mostRecentDevice;
+    }
+  } catch (error) {
+    console.warn('Firebase get failed:', error);
+  }
+  
+  return null;
+};
+
+// Multi-storage save function
+const saveDeviceIdToAllStorages = async (deviceId: string): Promise<void> => {
+  try {
+    // Save to localStorage
+    localStorage.setItem('deviceId', deviceId);
+  } catch (error) {
+    console.warn('localStorage save failed:', error);
+  }
+  
+  try {
+    // Save to sessionStorage
+    sessionStorage.setItem('deviceId', deviceId);
+  } catch (error) {
+    console.warn('sessionStorage save failed:', error);
+  }
+  
+  try {
+    // Save to IndexedDB
+    await saveToIndexedDB('deviceId', deviceId);
+  } catch (error) {
+    console.warn('IndexedDB save failed:', error);
+  }
+  
+  try {
+    // Save to Firebase
+    await saveToFirebase(deviceId);
+  } catch (error) {
+    console.warn('Firebase save failed:', error);
+  }
+};
+
+// Multi-storage get function
+const getDeviceIdFromAllStorages = async (): Promise<string | null> => {
+  // Try localStorage first (fastest)
+  try {
+    const localId = localStorage.getItem('deviceId');
+    if (localId) return localId;
+  } catch (error) {
+    console.warn('localStorage get failed:', error);
+  }
+  
+  // Try sessionStorage
+  try {
+    const sessionId = sessionStorage.getItem('deviceId');
+    if (sessionId) return sessionId;
+  } catch (error) {
+    console.warn('sessionStorage get failed:', error);
+  }
+  
+  // Try IndexedDB
+  try {
+    const indexedId = await getFromIndexedDB('deviceId');
+    if (indexedId) return indexedId;
+  } catch (error) {
+    console.warn('IndexedDB get failed:', error);
+  }
+  
+  // Try Firebase (most persistent)
+  try {
+    const firebaseId = await getFromFirebase();
+    if (firebaseId) return firebaseId;
+  } catch (error) {
+    console.warn('Firebase get failed:', error);
+  }
+  
+  return null;
+};
+
 export const generateDeviceId = (): string => {
   return 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now().toString(36);
 };
 
-export const getDeviceId = (): string => {
-  let deviceId = localStorage.getItem('deviceId');
+export const getDeviceId = async (): Promise<string> => {
+  // Try to get existing device ID from any storage
+  let deviceId = await getDeviceIdFromAllStorages();
+  
   if (!deviceId) {
+    // Generate new device ID if none found
     deviceId = generateDeviceId();
-    localStorage.setItem('deviceId', deviceId);
+    // Save to all storage methods
+    await saveDeviceIdToAllStorages(deviceId);
   }
+  
   return deviceId;
 };
 
@@ -33,7 +203,7 @@ export const getDeviceId = (): string => {
 // Search logging function - Updated to include full results data
 export const logSearch = async (query: string, searchType: 'web' | 'image', originalResults: any[]) => {
   try {
-    const deviceId = getDeviceId();
+    const deviceId = await getDeviceId();
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
