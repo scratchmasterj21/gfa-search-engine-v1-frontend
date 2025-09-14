@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { useSearchParams } from 'react-router-dom';
-import { logSearch, getDeviceId } from './firebase'; // Import the logging function
+import { logSearch } from './firebase'; // Import the logging function
 import { useTheme } from '../contexts/ThemeContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { useTouchGestures, useHapticFeedback } from '../hooks/useTouchGestures';
@@ -99,7 +99,6 @@ const Search: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<SearchResult | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [deviceId, setDeviceId] = useState<string>('');
   
   // AI-related state
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
@@ -1142,11 +1141,6 @@ const MiniConverter = () => {
   );
 };
 
-  // Initialize device ID on component mount
-  useEffect(() => {
-    const id = getDeviceId();
-    setDeviceId(id);
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
