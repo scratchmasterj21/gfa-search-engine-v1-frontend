@@ -293,7 +293,6 @@ SOURCES: [source 1, source 2, source 3]`;
 
     const apiKeys = this.getApiKeys();
     if (apiKeys.length === 0) {
-      console.warn('No Gemini API keys found');
       return null;
     }
 
@@ -304,7 +303,6 @@ SOURCES: [source 1, source 2, source 3]`;
         this.setCachedResponse(query, response);
         return response;
       } catch (error) {
-        console.warn(`API key ${i + 1} failed:`, error);
         if (i === apiKeys.length - 1) {
           // All keys failed
           throw error;

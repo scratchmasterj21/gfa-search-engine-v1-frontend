@@ -747,7 +747,6 @@ const MiniTranslator = () => {
     }
     
     try {
-      console.log(`Using API key ${availableKeyIndex + 1}/${apiKeys.length}`);
       
       const apiKey = apiKeys[availableKeyIndex];
       const translation = await translateWithKey(apiKey);
@@ -757,11 +756,9 @@ const MiniTranslator = () => {
       setCurrentKeyIndex(availableKeyIndex);
       setTranslatedText(translation);
       
-      console.log('Translation completed successfully');
       
     } catch (error: unknown) {
       const errorMessage: string = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.warn(`API key ${availableKeyIndex + 1} failed:`, errorMessage);
       
       if (errorMessage === 'RATE_LIMIT') {
         // Mark this key as rate-limited and try another
@@ -770,7 +767,6 @@ const MiniTranslator = () => {
         // Try to find another available key
         const nextKeyIndex = getNextAvailableKey();
         if (nextKeyIndex !== null && nextKeyIndex !== availableKeyIndex) {
-          console.log(`Retrying with API key ${nextKeyIndex + 1}/${apiKeys.length}`);
           setIsTranslating(false);
           setTimeout(() => translateText(), 100); // Small delay before retry
           return;
@@ -1150,7 +1146,6 @@ const MiniConverter = () => {
   useEffect(() => {
     const id = getDeviceId();
     setDeviceId(id);
-    console.log('Device ID:', deviceId);
   }, []);
 
   useEffect(() => {
@@ -1180,7 +1175,6 @@ const MiniConverter = () => {
       const response = await aiService.getAIResponse(searchQuery);
       setAiResponse(response);
     } catch (error) {
-      console.error('AI response error:', error);
       setAiError(error instanceof Error ? error.message : 'Failed to get AI response');
     } finally {
       setAiLoading(false);
@@ -1192,7 +1186,6 @@ const MiniConverter = () => {
     try {
       await navigator.clipboard.writeText(answer);
     } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
     }
   }, []);
 
@@ -1206,7 +1199,6 @@ const MiniConverter = () => {
 
     // Prevent multiple simultaneous requests using state
     if (loading || loadingMore) {
-      console.log('Already loading, skipping request');
       return;
     }
 
@@ -1238,12 +1230,10 @@ const MiniConverter = () => {
       // Google Custom Search API limits to 100 total results
       // Last valid start index is 91 (results 91-100)
       if (startIndex > 91) {
-        console.log('Reached API limit - no more results available');
         setHasMore(false);
         return;
       }
 
-      console.log(`Fetching page ${page}, startIndex: ${startIndex}, searchType: ${currentSearchType}`);
 
       const response = await axios.get<{ items: any[] }>(
         `https://backend.carlo587-jcl.workers.dev/search`,
@@ -1257,11 +1247,9 @@ const MiniConverter = () => {
       );
 
       const originalResults = response.data.items || [];
-      console.log(`Received ${originalResults.length} results for page ${page}`);
 
       // If we get no results, we've reached the end
       if (originalResults.length === 0) {
-        console.log('No results returned - reached end');
         setHasMore(false);
         return;
       }
@@ -1274,17 +1262,14 @@ const MiniConverter = () => {
       
       if (totalResultsAfterThisPage >= 100) {
         // Reached Google's 100 result limit
-        console.log('Reached 100 result limit');
         hasMoreResults = false;
       } else if (originalResults.length === 0) {
         // If we get 0 results, we've definitely reached the end
-        console.log('No results returned - reached end');
         hasMoreResults = false;
       } else {
         // If we get any results, assume there might be more
         // The only way to know for sure is to try the next page
         // We'll only stop when we get 0 results or hit the 100 limit
-        console.log(`Page ${page}: Received ${originalResults.length} results - continuing`);
         hasMoreResults = true;
       }
       
@@ -1303,13 +1288,11 @@ const MiniConverter = () => {
         // Append new results to existing ones
         setResults(prevResults => {
           const newResults = [...prevResults, ...formattedResults];
-          console.log(`Total results after append: ${newResults.length}`);
           return newResults;
         });
       } else {
         // Replace results for new search
         setResults(formattedResults);
-        console.log(`Set initial results: ${formattedResults.length}`);
       }
 
       // Log the search to Firebase (only for new searches, not pagination)
@@ -1319,7 +1302,6 @@ const MiniConverter = () => {
     
 
     } catch (error) {
-      console.error('Search error:', error);
       if (axios.isAxiosError(error)) {
         setErrorMessage(error.response?.data?.error || error.message || 'An unexpected error occurred.');
       } else if (error instanceof Error) {
@@ -1334,14 +1316,12 @@ const MiniConverter = () => {
         try {
           await logSearch(searchQuery, currentSearchType, []);
         } catch (logError) {
-          console.error('Error logging failed search:', logError);
         }
       }
       
       // If it's a load more error, don't show it prominently
       if (isLoadMore) {
         setHasMore(false);
-        console.log('Load more failed - setting hasMore to false');
       }
     } finally {
       if (isLoadMore) {
@@ -1359,12 +1339,10 @@ const MiniConverter = () => {
 
   const loadMoreResults = useCallback(() => {
     if (!hasMore || loading || loadingMore) {
-      console.log('Load more cancelled - hasMore:', hasMore, 'loading:', loading, 'loadingMore:', loadingMore);
       return;
     }
     
     const nextPage = currentPage + 1;
-    console.log('Loading more results - page:', nextPage);
     setCurrentPage(nextPage);
     performSearch(nextPage, true);
   }, [currentPage, hasMore, loading, loadingMore, performSearch]);
@@ -1379,28 +1357,14 @@ const MiniConverter = () => {
 
     // Only set up observer if we have results and can load more
     if (results.length === 0 || !hasMore || loading || loadingMore) {
-      console.log('Skipping observer setup:', { 
-        resultsLength: results.length, 
-        hasMore, 
-        loading, 
-        loadingMore 
-      });
       return;
     }
 
     const observer = new IntersectionObserver(
       (entries) => {
         const target = entries[0];
-        console.log('Intersection observed:', {
-          isIntersecting: target.isIntersecting,
-          hasMore,
-          loading,
-          loadingMore,
-          resultsLength: results.length
-        });
         
         if (target.isIntersecting && hasMore && !loading && !loadingMore && results.length > 0) {
-          console.log('Triggering load more from intersection observer');
           loadMoreResults();
         }
       },
@@ -1417,7 +1381,6 @@ const MiniConverter = () => {
     const timeoutId = setTimeout(() => {
       if (loadMoreRef.current && observerRef.current) {
         observer.observe(loadMoreRef.current);
-        console.log('Observer attached to load more element');
       }
     }, 100);
 
@@ -1441,7 +1404,6 @@ const MiniConverter = () => {
 
       // Trigger load more when user is within 300px of the bottom
       if (scrollTop + windowHeight >= documentHeight - 300) {
-        console.log('Scroll-based load more triggered');
         loadMoreResults();
       }
     };
@@ -1552,14 +1514,12 @@ const MiniConverter = () => {
       });
       setSuggestions(response.data || fallbackSuggestions);
     } catch (error) {
-      console.error('Error fetching auto-suggestions:', error);
       // Use fallback suggestions when API fails
       setSuggestions(fallbackSuggestions);
     }
   }, []);
 
   const handleSearch = useCallback(() => {
-    console.log('Starting new search for:', query);
     setCurrentPage(1);
     setHasMore(true);
     setResults([]);
@@ -1574,7 +1534,6 @@ const MiniConverter = () => {
 
 
   const handleTabChange = (type: 'web' | 'image') => {
-    console.log('Changing search type to:', type);
     
     // Only clear results if we have a query to search with
     if (query.trim()) {
@@ -1605,7 +1564,6 @@ const MiniConverter = () => {
     setSuggestions([]); // Clear suggestions immediately
     
     // Use the suggestion directly instead of relying on state
-    console.log('Starting new search for suggestion:', suggestion);
     setCurrentPage(1);
     setHasMore(true);
     setResults([]);
@@ -1618,7 +1576,6 @@ const MiniConverter = () => {
   const handleImageClick = useCallback((image: SearchResult) => {
     // Capture current scroll position before opening modal
     const currentScrollY = window.scrollY;
-    console.log('Modal scroll position captured:', currentScrollY);
     
     // Immediately lock the scroll to prevent any movement
     // Use multiple methods to ensure scroll is locked

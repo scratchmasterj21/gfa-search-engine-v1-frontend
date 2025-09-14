@@ -55,7 +55,6 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
     if (query.trim().length > 0 && (isFocused || suggestions.length > 0) && !isOrientationChanging) {
       setShowSuggestions(true);
       updateDropdownPosition();
-      console.log('Showing suggestions for query:', query);
     }
   }, [query, isFocused, suggestions.length, isOrientationChanging]);
 
@@ -280,7 +279,6 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
       {/* Suggestions Dropdown - Rendered via Portal */}
       {(() => {
         const shouldShow = showSuggestions && (suggestions.length > 0 || query.trim().length > 0);
-        console.log('Suggestions debug:', { showSuggestions, suggestionsLength: suggestions.length, queryLength: query.trim().length, shouldShow });
         
         if (!shouldShow) return null;
         

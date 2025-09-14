@@ -48,5 +48,4 @@ export const englishTestQueries = [
 // import { aiService } from '../services/aiService';
 // 
 // japaneseTestQueries.forEach(query => {
-//   console.log(`"${query}" -> AI: ${aiService.shouldUseAI(query)}`);
 // });

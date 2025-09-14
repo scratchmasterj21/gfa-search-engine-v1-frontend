@@ -69,8 +69,6 @@ export const logSearch = async (query: string, searchType: 'web' | 'image', orig
     };
     
     await push(searchLogRef, logData);
-    console.log('Search logged successfully with full results');
   } catch (error) {
-    console.error('Error logging search:', error);
   }
 };
