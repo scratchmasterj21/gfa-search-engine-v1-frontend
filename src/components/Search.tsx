@@ -1313,7 +1313,9 @@ const MiniConverter = () => {
       }
 
       // Log the search to Firebase (only for new searches, not pagination)
-      await logSearch(searchQuery, currentSearchType, originalResults);
+      // If all results were filtered out, log with blank results to track blocked keyword attempts
+      const resultsToLog = originalResults.length === 0 ? [] : originalResults;
+      await logSearch(searchQuery, currentSearchType, resultsToLog);
     
 
     } catch (error) {
@@ -1324,6 +1326,16 @@ const MiniConverter = () => {
         setErrorMessage(error.message);
       } else {
         setErrorMessage('An unknown error occurred.');
+      }
+      
+      // Log the search even if it failed (for new searches only, not pagination)
+      // This helps track blocked keyword attempts that cause API errors
+      if (!isLoadMore) {
+        try {
+          await logSearch(searchQuery, currentSearchType, []);
+        } catch (logError) {
+          console.error('Error logging failed search:', logError);
+        }
       }
       
       // If it's a load more error, don't show it prominently
