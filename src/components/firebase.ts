@@ -62,7 +62,7 @@ const getFromIndexedDB = async (key: string): Promise<string | null> => {
   }
 };
 
-// Firebase storage functions
+// Firebase device registration function - for analytics/logging only, not ID storage
 const saveToFirebase = async (deviceId: string): Promise<void> => {
   try {
     const deviceRef = ref(database, `deviceRegistry/${deviceId}`);
@@ -77,43 +77,14 @@ const saveToFirebase = async (deviceId: string): Promise<void> => {
       hardwareConcurrency: navigator.hardwareConcurrency
     });
   } catch (error) {
-    console.warn('Firebase save failed:', error);
+    console.warn('Firebase device registration failed:', error);
   }
 };
 
-const getFromFirebase = async (): Promise<string | null> => {
-  try {
-    // Get all devices and find the most recent one
-    const devicesRef = ref(database, 'deviceRegistry');
-    const snapshot = await get(devicesRef);
-    
-    if (snapshot.exists()) {
-      const devices = snapshot.val();
-      let mostRecentDevice = null;
-      let mostRecentTime = 0;
-      
-      // Find the device with the most recent lastSeen timestamp
-      for (const [deviceId, deviceData] of Object.entries(devices)) {
-        const data = deviceData as any;
-        if (data.lastSeen) {
-          const lastSeenTime = new Date(data.lastSeen).getTime();
-          if (lastSeenTime > mostRecentTime) {
-            mostRecentTime = lastSeenTime;
-            mostRecentDevice = deviceId;
-          }
-        }
-      }
-      
-      return mostRecentDevice;
-    }
-  } catch (error) {
-    console.warn('Firebase get failed:', error);
-  }
-  
-  return null;
-};
+// REMOVED: getFromFirebase function - no longer needed for device identification
+// Firebase is now only used for device registration and search logging, not ID retrieval
 
-// Multi-storage save function
+// Multi-storage save function - on-device storage only
 const saveDeviceIdToAllStorages = async (deviceId: string): Promise<void> => {
   try {
     // Save to localStorage
@@ -130,21 +101,16 @@ const saveDeviceIdToAllStorages = async (deviceId: string): Promise<void> => {
   }
   
   try {
-    // Save to IndexedDB
+    // Save to IndexedDB (most persistent on-device storage)
     await saveToIndexedDB('deviceId', deviceId);
   } catch (error) {
     console.warn('IndexedDB save failed:', error);
   }
   
-  try {
-    // Save to Firebase
-    await saveToFirebase(deviceId);
-  } catch (error) {
-    console.warn('Firebase save failed:', error);
-  }
+  // Firebase is only used for device registration/logging, not ID storage
 };
 
-// Multi-storage get function
+// Multi-storage get function - NO FIREBASE FALLBACK for device identification
 const getDeviceIdFromAllStorages = async (): Promise<string | null> => {
   // Try localStorage first (fastest)
   try {
@@ -162,7 +128,7 @@ const getDeviceIdFromAllStorages = async (): Promise<string | null> => {
     console.warn('sessionStorage get failed:', error);
   }
   
-  // Try IndexedDB
+  // Try IndexedDB (most persistent on-device storage)
   try {
     const indexedId = await getFromIndexedDB('deviceId');
     if (indexedId) return indexedId;
@@ -170,14 +136,7 @@ const getDeviceIdFromAllStorages = async (): Promise<string | null> => {
     console.warn('IndexedDB get failed:', error);
   }
   
-  // Try Firebase (most persistent)
-  try {
-    const firebaseId = await getFromFirebase();
-    if (firebaseId) return firebaseId;
-  } catch (error) {
-    console.warn('Firebase get failed:', error);
-  }
-  
+  // NO FIREBASE FALLBACK - each device must have its own unique ID
   return null;
 };
 
@@ -199,13 +158,13 @@ export const getDeviceId = async (): Promise<string> => {
   return deviceId;
 };
 
-// Auto-register device on website load
+// Auto-register device on website load - Firebase registration for analytics only
 export const initializeDeviceRegistration = async (): Promise<void> => {
   try {
     const deviceId = await getDeviceId();
     const deviceRef = ref(database, `deviceRegistry/${deviceId}`);
     
-    // Check if device already exists
+    // Check if device already exists in Firebase
     const snapshot = await get(deviceRef);
     
     if (snapshot.exists()) {
@@ -216,17 +175,8 @@ export const initializeDeviceRegistration = async (): Promise<void> => {
         lastSeen: new Date().toISOString() // Only update lastSeen
       });
     } else {
-      // New device - create initial registration
-      await set(deviceRef, {
-        deviceId: deviceId,
-        deviceName: deviceId,
-        isNamed: false,
-        firstVisit: new Date().toISOString(),
-        lastSeen: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        screenResolution: `${screen.width}x${screen.height}`,
-        hardwareConcurrency: navigator.hardwareConcurrency
-      });
+      // New device - create initial registration in Firebase for analytics
+      await saveToFirebase(deviceId);
     }
   } catch (error) {
     console.warn('Device registration failed:', error);
