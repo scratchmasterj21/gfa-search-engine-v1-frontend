@@ -86,6 +86,40 @@ class AIService {
     return japaneseRegex.test(query);
   }
 
+  // Check if query contains adult content
+  private containsAdultContent(query: string): boolean {
+    const normalizedQuery = query.toLowerCase().trim();
+    const originalQuery = query.trim();
+    
+    // English adult content keywords
+    const adultKeywordsEnglish = [
+      'porn', 'pornography', 'sex', 'sexual', 'nude', 'naked', 'breast', 'boob', 'boobs',
+      'penis', 'vagina', 'orgasm', 'masturbat', 'fetish', 'bdsm', 'xxx', 'adult',
+      'erotic', 'intimate', 'genital', 'explicit', 'nsfw', 'hentai', 'ecchi'
+    ];
+    
+    // Japanese adult content keywords
+    const adultKeywordsJapanese = [
+      'おパイ', 'おっぱい', 'パイ', 'ちんこ', 'まんこ', 'エッチ', 'エロ', 'ポルノ',
+      'アダルト', 'AV', 'アブノーマル', '変態', '痴漢', 'レイプ', 'SM', 'BDSM',
+      'フェチ', 'コスプレ', 'ロリ', 'ショタ', '巨乳', '貧乳', '美少女', '美少年',
+      'セックス', '性交', '性行為', '自慰', 'オナニー', 'マスターベーション',
+      '裸', 'ヌード', '下着', 'パンツ', 'ブラジャー', '乳首', '陰部', '性器'
+    ];
+    
+    // Check for English adult keywords
+    const hasEnglishAdultContent = adultKeywordsEnglish.some(keyword => 
+      normalizedQuery.includes(keyword)
+    );
+    
+    // Check for Japanese adult keywords
+    const hasJapaneseAdultContent = adultKeywordsJapanese.some(keyword => 
+      originalQuery.includes(keyword)
+    );
+    
+    return hasEnglishAdultContent || hasJapaneseAdultContent;
+  }
+
   // Check if query should trigger AI response
   shouldUseAI(query: string): boolean {
     const normalizedQuery = query.toLowerCase().trim();
@@ -93,6 +127,11 @@ class AIService {
     
     // Skip if query is too short
     if (normalizedQuery.length < 2) return false;
+    
+    // Skip if query contains adult content
+    if (this.containsAdultContent(query)) {
+      return false;
+    }
     
     // Skip if query has special operators
     if (this.skipPatterns.some(pattern => pattern.test(normalizedQuery))) {
@@ -201,6 +240,12 @@ class AIService {
 5. 比較に関する質問の場合は、主要な違いを強調する
 6. 回答の最後に「SOURCES:」を付けて、2-3の関連するソース提案を提供する（トピック名のみ、URLは不要）
 
+重要な制限事項:
+- 成人向けコンテンツ、性的な内容、ポルノ、アダルト関連の質問には一切回答しないでください
+- 性的な用語、身体部位、性的行為に関する質問には回答しないでください
+- そのような質問の場合は「申し訳ございませんが、この質問にはお答えできません」と回答してください
+- 教育的な目的であっても、性的な内容に関する質問には回答しないでください
+
 回答形式:
 ANSWER: [ここに回答]
 SOURCES: [ソース1, ソース2, ソース3]` :
@@ -214,6 +259,12 @@ Requirements:
 4. If it's a "how to" question, provide step-by-step guidance
 5. If it's a comparison question, highlight key differences
 6. End your response with "SOURCES:" followed by 2-3 relevant source suggestions (just the topic names, not URLs)
+
+Important restrictions:
+- Do NOT answer questions related to adult content, sexual content, pornography, or any adult-related topics
+- Do NOT answer questions about sexual terms, body parts, or sexual activities
+- If the question is about such content, respond with "I'm sorry, but I cannot answer that question"
+- Even if the question seems educational, do NOT answer questions about sexual content
 
 Format your response as:
 ANSWER: [your answer here]
