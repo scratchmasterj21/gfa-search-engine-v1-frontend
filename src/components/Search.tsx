@@ -1199,9 +1199,14 @@ const MiniConverter = () => {
   const performSearchWithQuery = useCallback(async (searchQuery: string, page: number, isLoadMore = false, searchTypeParam?: 'web' | 'image') => {
     if (!searchQuery) return;
 
-    // Check if device search is blocked
-    if (isSearchBlocked) {
-      setErrorMessage('Search is currently disabled on this device. Please contact support if you believe this is an error.');
+    // Check if device search is blocked (real-time check)
+    const currentlyBlocked = await isDeviceSearchBlocked();
+    if (currentlyBlocked) {
+      setIsSearchBlocked(true);
+      setResults([]); // Clear any existing search results
+      setAiResponse(null); // Clear AI response
+      setAiError(null); // Clear AI error
+      setErrorMessage(null); // Clear any existing error messages
       return;
     }
 
