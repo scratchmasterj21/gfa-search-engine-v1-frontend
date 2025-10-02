@@ -370,3 +370,83 @@
     border: 2px solid currentColor;
   }
 }
+
+/* Mobile background optimization */
+@media (max-width: 768px) {
+  .bg-fixed-mobile {
+    background-attachment: scroll !important;
+    -webkit-background-attachment: scroll !important;
+  }
+  
+  /* Prevent background zoom on mobile */
+  .bg-no-zoom {
+    background-size: 100% 100% !important;
+    background-position: center center !important;
+    background-repeat: no-repeat !important;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-perspective: 1000px;
+    perspective: 1000px;
+  }
+  
+  /* Additional mobile viewport fixes */
+  .mobile-bg-container {
+    position: relative !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  /* Prevent any scaling on mobile */
+  .no-scale-mobile {
+    -webkit-transform: scale(1) !important;
+    transform: scale(1) !important;
+    -webkit-transform-origin: center center !important;
+    transform-origin: center center !important;
+  }
+  
+  /* Mobile background pseudo-element */
+  .mobile-bg-container::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-image: url('https://i.imgur.com/G20z4MI.png');
+    background-size: 100% 100%;
+    background-position: center center;
+    background-repeat: no-repeat;
+    z-index: -1;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+  
+  /* Dark theme overlay for mobile */
+  .mobile-bg-container.dark-theme::before {
+    background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('https://i.imgur.com/G20z4MI.png');
+  }
+  
+  /* Ensure animated elements don't interfere */
+  .mobile-bg-container .absolute {
+    z-index: 1 !important;
+  }
+  
+  /* Prevent any viewport scaling issues */
+  .mobile-bg-container {
+    -webkit-text-size-adjust: 100% !important;
+    -ms-text-size-adjust: 100% !important;
+    text-size-adjust: 100% !important;
+  }
+}
+
+/* Tablet background optimization */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .bg-fixed-tablet {
+    background-attachment: scroll !important;
+    -webkit-background-attachment: scroll !important;
+  }
+}

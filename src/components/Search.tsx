@@ -1614,11 +1614,20 @@ const MiniConverter = () => {
     <ResponsiveLayout>
       <div
         ref={mainContainerRef}
-        className="min-h-screen bg-cover bg-center bg-fixed transition-colors duration-300"
+        className={`min-h-screen transition-colors duration-300 mobile-bg-container no-scale-mobile ${
+          isMobile 
+            ? `bg-no-zoom bg-fixed-mobile ${actualTheme === 'dark' ? 'dark-theme' : ''}` 
+            : isTablet 
+              ? 'bg-cover bg-center bg-fixed-tablet' 
+              : 'bg-cover bg-center bg-fixed'
+        }`}
         style={{ 
-          backgroundImage: actualTheme === 'dark' 
-            ? `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('https://i.imgur.com/G20z4MI.png')`
-            : `url('https://i.imgur.com/G20z4MI.png')`
+          backgroundImage: isMobile 
+            ? 'none' // We'll use a pseudo-element for mobile
+            : actualTheme === 'dark' 
+              ? `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('https://i.imgur.com/G20z4MI.png')`
+              : `url('https://i.imgur.com/G20z4MI.png')`,
+          position: 'relative'
         }}
         onTouchStart={handleTouchStart as any}
         onTouchEnd={handleTouchEnd as any}
