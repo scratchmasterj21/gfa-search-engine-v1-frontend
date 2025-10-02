@@ -43,8 +43,8 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
     if (searchBarRef.current) {
       const rect = searchBarRef.current.getBoundingClientRect();
       setDropdownPosition({
-        top: rect.bottom + window.scrollY + 8,
-        left: rect.left + window.scrollX,
+        top: rect.bottom + 8, // Remove window.scrollY to make it fixed relative to viewport
+        left: rect.left,
         width: rect.width
       });
     }
@@ -65,9 +65,15 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
     }
   }, [showSuggestions]);
 
-  // Update position on window resize and handle orientation changes
+  // Update position on window resize, scroll, and handle orientation changes
   useEffect(() => {
     const handleResize = () => {
+      if (showSuggestions) {
+        updateDropdownPosition();
+      }
+    };
+
+    const handleScroll = () => {
       if (showSuggestions) {
         updateDropdownPosition();
       }
@@ -88,12 +94,12 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
     };
 
     window.addEventListener('resize', handleResize);
-    window.addEventListener('scroll', handleResize);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('orientationchange', handleOrientationChange);
     
     return () => {
       window.removeEventListener('resize', handleResize);
-      window.removeEventListener('scroll', handleResize);
+      window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('orientationchange', handleOrientationChange);
     };
   }, [showSuggestions, isFocused, query]);
@@ -132,6 +138,34 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
     onBlur?.();
   };
 
+  // Handle click outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      
+      // Check if click is outside the search bar container
+      if (searchBarRef.current && !searchBarRef.current.contains(target)) {
+        // Also check if click is on a suggestion (which is rendered in a portal)
+        const isSuggestionClick = (target as Element).closest('[data-suggestion-dropdown]');
+        if (!isSuggestionClick) {
+          setShowSuggestions(false);
+        }
+      }
+    };
+
+    if (showSuggestions) {
+      // Use a small delay to allow suggestion clicks to register first
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 100);
+      
+      return () => {
+        clearTimeout(timeoutId);
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showSuggestions]);
+
   // Handle input change - show suggestions when typing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
@@ -152,7 +186,11 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
   };
 
   // Handle suggestion click
-  const handleSuggestionClick = (suggestion: string) => {
+  const handleSuggestionClick = (suggestion: string, event?: React.MouseEvent) => {
+    // Prevent the click-outside handler from interfering
+    event?.stopPropagation();
+    event?.preventDefault();
+    
     onSuggestionClick?.(suggestion);
     setShowSuggestions(false);
     if (isMobile) {
@@ -164,6 +202,16 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSearch();
+    }
+  };
+
+  // Handle clear search
+  const handleClearSearch = () => {
+    onQueryChange('');
+    inputRef.current?.focus();
+    setShowSuggestions(false);
+    if (isMobile) {
+      triggerHaptic('light');
     }
   };
 
@@ -233,6 +281,22 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
     return `${sizeClasses} ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`;
   };
 
+  const getClearButtonClasses = () => {
+    const baseClasses = 'flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95';
+    const themeClasses = actualTheme === 'dark' 
+      ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50' 
+      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/50';
+    
+    let sizeClasses = '';
+    if (isMobile) {
+      sizeClasses = isPortrait ? 'w-8 h-8 rounded-full' : 'w-6 h-6 rounded-full';
+    } else {
+      sizeClasses = 'w-8 h-8 rounded-full';
+    }
+    
+    return `${baseClasses} ${themeClasses} ${sizeClasses}`;
+  };
+
   return (
     <div className="relative w-full max-w-4xl mx-auto" style={{ zIndex: 1000 }}>
       <div 
@@ -258,6 +322,30 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
           placeholder={placeholder}
           className={getInputClasses()}
         />
+
+        {/* Clear Button - Only show when there's text */}
+        {query.trim().length > 0 && (
+          <button
+            onClick={handleClearSearch}
+            className={getClearButtonClasses()}
+            title="Clear search"
+            type="button"
+          >
+            <svg 
+              className={isMobile && !isPortrait ? 'w-4 h-4' : 'w-5 h-5'} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M6 18L18 6M6 6l12 12" 
+              />
+            </svg>
+          </button>
+        )}
 
         {/* Search Button */}
         <button
@@ -292,6 +380,7 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
         
         return createPortal(
           <div 
+            data-suggestion-dropdown
             className={`
               fixed backdrop-blur-md border rounded-2xl shadow-2xl z-[9999] overflow-y-auto animate-slide-in-top
               ${actualTheme === 'dark' 
@@ -302,16 +391,19 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
               ${isMobile && isPortrait ? 'max-h-48' : ''}
             `}
             style={{
+              position: 'fixed',
               top: dropdownPosition.top,
               left: dropdownPosition.left,
               width: dropdownPosition.width,
-              maxWidth: '90vw'
+              maxWidth: '90vw',
+              transform: 'translateZ(0)', // Force hardware acceleration
+              backfaceVisibility: 'hidden'
             }}
           >
             {suggestionsList.map((suggestion, index) => (
               <button
                 key={index}
-                onClick={() => handleSuggestionClick(suggestion)}
+                onClick={(e) => handleSuggestionClick(suggestion, e)}
                 className={`
                   w-full px-6 py-4 text-left transition-all duration-200 border-b last:border-b-0 font-medium first:rounded-t-2xl last:rounded-b-2xl
                   ${actualTheme === 'dark' 
