@@ -27,39 +27,39 @@ const EnhancedResultCard: React.FC<EnhancedResultCardProps> = ({
   const { actualTheme } = useTheme();
 
   const cardClasses = `
-    group relative overflow-hidden transition-all duration-300 transform hover:-translate-y-1
+    group relative overflow-hidden transition-all duration-300 hover-lift
     ${actualTheme === 'dark' 
-      ? 'bg-gray-800/95 hover:bg-gray-700/95 border border-gray-700/50 hover:border-gray-600/50' 
-      : 'bg-white/95 hover:bg-white border border-white/20 hover:border-purple-300/50'
+      ? 'bg-gray-900/95 hover:bg-gray-800/95 border-gray-700/50 hover:border-gray-600/60' 
+      : 'bg-white/95 hover:bg-white/98 border-white/30 hover:border-purple-300/50'
     }
-    backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl
+    backdrop-blur-xl rounded-3xl shadow-depth-3 hover:shadow-depth-5
     ${actualTheme === 'dark' 
-      ? 'hover:shadow-purple-500/10' 
-      : 'hover:shadow-purple-500/10'
+      ? 'hover:glow-purple' 
+      : 'hover:glow-cyan'
     }
   `;
 
   const titleClasses = `
-    font-bold leading-tight transition-colors duration-300 group-hover:text-purple-600
+    font-bold leading-tight transition-colors duration-300 group-hover:text-gradient
     ${actualTheme === 'dark' 
-      ? 'text-gray-100 group-hover:text-purple-400' 
-      : 'text-gray-800 group-hover:text-purple-700'
+      ? 'text-white group-hover:text-gradient' 
+      : 'text-gray-900 group-hover:text-gradient'
     }
   `;
 
   const snippetClasses = `
-    leading-relaxed font-medium
+    leading-relaxed font-medium text-base
     ${actualTheme === 'dark' 
-      ? 'text-gray-300' 
-      : 'text-gray-600'
+      ? 'text-gray-200' 
+      : 'text-gray-700'
     }
   `;
 
   const sourceClasses = `
-    text-sm font-bold truncate px-3 py-1 rounded-full
+    text-sm font-semibold truncate px-4 py-2 rounded-full shadow-depth-1
     ${actualTheme === 'dark' 
-      ? 'text-emerald-400 bg-emerald-900/30' 
-      : 'text-emerald-600 bg-emerald-50'
+      ? 'text-emerald-300 bg-emerald-900/60 border border-emerald-700/50' 
+      : 'text-emerald-700 bg-emerald-100 border border-emerald-300/70'
     }
   `;
 
@@ -67,32 +67,32 @@ const EnhancedResultCard: React.FC<EnhancedResultCardProps> = ({
     return (
       <button 
         onClick={() => onImageClick?.(item)}
-        className={cardClasses}
+        className={`${cardClasses} touch-feedback`}
         style={{ animationDelay: `${index * 30}ms` }}
       >
-        <div className="aspect-square p-2 relative">
+        <div className="aspect-square p-3 relative">
           <img
             src={item.image}
             alt={item.title || 'Search result image'}
-            className="w-full h-full object-cover rounded-xl group-hover:brightness-110 transition-all duration-300"
+            className="w-full h-full object-cover rounded-2xl group-hover:brightness-110 transition-all duration-300 shadow-depth-2"
             loading="lazy"
           />
           
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl" />
+          {/* Enhanced gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-purple-900/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-3xl" />
           
-          {/* View image text */}
-          <div className="absolute bottom-2 left-2 right-2 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+          {/* Enhanced view image text */}
+          <div className="absolute bottom-3 left-3 right-3 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
             <div className={`
-              backdrop-blur-md rounded-lg px-3 py-2
+              rounded-xl px-4 py-3 shadow-depth-3
               ${actualTheme === 'dark' 
-                ? 'bg-gray-800/90 text-gray-100' 
-                : 'bg-white/90 text-gray-800'
+                ? 'bg-gray-900/95 text-white border border-gray-700/50' 
+                : 'bg-white/95 text-gray-900 border border-white/50'
               }
             `}>
-              <p className="text-sm font-medium flex items-center">
+              <p className="text-sm font-semibold flex items-center" style={{ textShadow: actualTheme === 'dark' ? '0 1px 2px rgba(0,0,0,0.8)' : '0 1px 2px rgba(255,255,255,0.8)' }}>
                 <span>View Image</span>
-                <ExternalLinkIcon className="ml-1" />
+                <ExternalLinkIcon className="ml-2 w-4 h-4" />
               </p>
             </div>
           </div>
@@ -103,58 +103,62 @@ const EnhancedResultCard: React.FC<EnhancedResultCardProps> = ({
 
   return (
     <div 
-      className={cardClasses}
+      className={`${cardClasses} touch-feedback`}
       style={{ animationDelay: `${index * 50}ms` }}
     >
-      <div className="p-6">
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Thumbnail */}
+      <div className="p-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Enhanced Thumbnail */}
           {item.thumbnail && (
             <div className="flex-shrink-0 order-1 lg:order-none">
-              <div className="relative overflow-hidden rounded-xl group-hover:scale-105 transition-transform duration-300">
+              <div className="relative overflow-hidden rounded-2xl group-hover:scale-105 transition-transform duration-300 shadow-depth-2">
                 <img
                   src={item.thumbnail}
                   alt={item.title}
-                  className="w-full lg:w-36 lg:h-36 h-48 object-cover"
+                  className="w-full lg:w-40 lg:h-40 h-52 object-cover"
                   loading="lazy"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-purple-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute inset-0 bg-gradient-to-t from-purple-600/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </div>
             </div>
           )}
           
-          {/* Content */}
+          {/* Enhanced Content */}
           <div className="flex-1 min-w-0">
-            {/* Source indicator */}
-            <div className="mb-3 flex items-center">
-              <div className="w-3 h-3 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mr-3 animate-pulse" />
+            {/* Enhanced Source indicator */}
+            <div className="mb-4 flex items-center">
+              <div className="w-4 h-4 bg-gradient-brand rounded-full mr-4 animate-pulse shadow-depth-1" />
               <p className={sourceClasses}>
                 {item.source}
               </p>
             </div>
             
-            {/* Title */}
-            <h3 className={`text-xl mb-4 ${titleClasses}`}>
+            {/* Enhanced Title */}
+            <h3 className={`text-2xl mb-6 ${titleClasses}`}>
               <a 
                 href={item.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:underline decoration-purple-400 decoration-2 underline-offset-4 flex items-start gap-2"
+                className="hover:underline decoration-purple-400 decoration-2 underline-offset-4 flex items-start gap-3 focus-ring rounded-lg p-1 -m-1"
+                style={{ textShadow: actualTheme === 'dark' ? '0 1px 2px rgba(0,0,0,0.8)' : '0 1px 2px rgba(255,255,255,0.8)' }}
               >
                 <span className="flex-1">{item.title}</span>
-                <ExternalLinkIcon className="flex-shrink-0 mt-1" />
+                <ExternalLinkIcon className="flex-shrink-0 mt-1 w-5 h-5" />
               </a>
             </h3>
             
-            {/* Snippet */}
-            <p className={`line-clamp-3 ${snippetClasses}`}>
+            {/* Enhanced Snippet */}
+            <p 
+              className={`line-clamp-3 mb-6 ${snippetClasses}`}
+              style={{ textShadow: actualTheme === 'dark' ? '0 1px 2px rgba(0,0,0,0.8)' : '0 1px 2px rgba(255,255,255,0.8)' }}
+            >
               {item.snippet}
             </p>
             
-            {/* Link preview */}
-            <div className="mt-4 flex items-center gap-2">
+            {/* Enhanced Link preview */}
+            <div className="flex items-center gap-3">
               <div className={`
-                w-2 h-2 rounded-full
+                w-3 h-3 rounded-full shadow-depth-1
                 ${actualTheme === 'dark' 
                   ? 'bg-green-400' 
                   : 'bg-green-500'
@@ -165,12 +169,13 @@ const EnhancedResultCard: React.FC<EnhancedResultCardProps> = ({
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`
-                  text-sm font-medium truncate hover:underline
+                  text-sm font-medium truncate hover:underline focus-ring rounded px-2 py-1 -m-1
                   ${actualTheme === 'dark' 
-                    ? 'text-gray-400 hover:text-gray-300' 
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'text-gray-300 hover:text-gray-200' 
+                    : 'text-gray-600 hover:text-gray-800'
                   }
                 `}
+                style={{ textShadow: actualTheme === 'dark' ? '0 1px 2px rgba(0,0,0,0.8)' : '0 1px 2px rgba(255,255,255,0.8)' }}
               >
                 {item.link}
               </a>
@@ -179,8 +184,8 @@ const EnhancedResultCard: React.FC<EnhancedResultCardProps> = ({
         </div>
       </div>
       
-      {/* Hover effect border */}
-      <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-purple-400/20 transition-all duration-300 pointer-events-none" />
+      {/* Enhanced hover effect border */}
+      <div className="absolute inset-0 rounded-3xl border-2 border-transparent group-hover:border-gradient transition-all duration-300 pointer-events-none" />
     </div>
   );
 };

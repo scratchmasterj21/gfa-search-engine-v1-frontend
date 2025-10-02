@@ -215,56 +215,56 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
     }
   };
 
-  // Get responsive classes
+  // Get responsive classes with enhanced visual design
   const getSearchBarClasses = () => {
-    const baseClasses = 'flex items-stretch backdrop-blur-md rounded-2xl shadow-2xl transition-all duration-300 border';
+    const baseClasses = 'flex items-stretch rounded-3xl shadow-depth-4 transition-all duration-300 border hover-lift focus-ring';
     const themeClasses = actualTheme === 'dark' 
-      ? 'bg-gray-800/95 border-gray-700/50 hover:border-gray-600/50' 
-      : 'bg-white/95 border-white/20 hover:border-purple-300/50';
-    const focusClasses = isFocused ? 'ring-2 ring-purple-400/50 shadow-purple-500/30' : '';
+      ? 'bg-gray-900/95 hover:bg-gray-800/95 border-gray-700/50 hover:border-gray-600/60' 
+      : 'bg-white/95 hover:bg-white/98 border-white/30 hover:border-purple-300/50';
+    const focusClasses = isFocused ? 'ring-2 ring-purple-400/50 glow-purple shadow-depth-5' : '';
     
     let sizeClasses = '';
     if (isMobile) {
-      sizeClasses = isPortrait ? 'rounded-xl' : 'rounded-lg';
+      sizeClasses = isPortrait ? 'rounded-2xl' : 'rounded-xl';
     } else if (isTablet) {
-      sizeClasses = 'rounded-2xl';
+      sizeClasses = 'rounded-3xl';
     } else {
-      sizeClasses = 'rounded-2xl';
+      sizeClasses = 'rounded-3xl';
     }
     
     return `${baseClasses} ${themeClasses} ${focusClasses} ${sizeClasses}`;
   };
 
   const getInputClasses = () => {
-    const baseClasses = 'flex-1 outline-none bg-transparent font-medium transition-all duration-300';
+    const baseClasses = 'flex-1 outline-none bg-transparent font-medium transition-all duration-300 focus-ring';
     const themeClasses = actualTheme === 'dark' 
-      ? 'placeholder-gray-400 text-gray-100' 
-      : 'placeholder-gray-500 text-gray-800';
+      ? 'placeholder-gray-400 text-white' 
+      : 'placeholder-gray-500 text-gray-900';
     
     let sizeClasses = '';
     if (isMobile) {
-      sizeClasses = isPortrait ? 'text-base px-3 py-3' : 'text-sm px-2 py-2';
+      sizeClasses = isPortrait ? 'text-base px-4 py-4' : 'text-sm px-3 py-3';
     } else if (isTablet) {
-      sizeClasses = 'text-lg px-4 py-4';
+      sizeClasses = 'text-lg px-6 py-5';
     } else {
-      sizeClasses = 'text-lg px-4 py-4';
+      sizeClasses = 'text-lg px-6 py-5';
     }
     
     return `${baseClasses} ${themeClasses} ${sizeClasses}`;
   };
 
   const getButtonClasses = () => {
-    const baseClasses = 'bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white transition-all duration-300 font-semibold whitespace-nowrap shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95';
+    const baseClasses = 'btn-primary hover-scale touch-feedback ripple-enhanced relative overflow-hidden';
     
     let sizeClasses = '';
     if (isMobile) {
       sizeClasses = isPortrait 
-        ? 'px-6 py-3 rounded-r-xl' 
-        : 'px-4 py-2 rounded-r-lg';
+        ? 'px-6 py-4 rounded-r-2xl' 
+        : 'px-4 py-3 rounded-r-xl';
     } else if (isTablet) {
-      sizeClasses = 'px-8 py-4 rounded-r-2xl';
+      sizeClasses = 'px-8 py-5 rounded-r-3xl';
     } else {
-      sizeClasses = 'px-8 py-4 rounded-r-2xl';
+      sizeClasses = 'px-8 py-5 rounded-r-3xl';
     }
     
     return `${baseClasses} ${sizeClasses}`;
@@ -282,16 +282,16 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
   };
 
   const getClearButtonClasses = () => {
-    const baseClasses = 'flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95';
+    const baseClasses = 'flex items-center justify-center transition-all duration-200 hover-scale touch-feedback focus-ring';
     const themeClasses = actualTheme === 'dark' 
       ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50' 
       : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/50';
     
     let sizeClasses = '';
     if (isMobile) {
-      sizeClasses = isPortrait ? 'w-8 h-8 rounded-full' : 'w-6 h-6 rounded-full';
+      sizeClasses = isPortrait ? 'w-10 h-10 rounded-full' : 'w-8 h-8 rounded-full';
     } else {
-      sizeClasses = 'w-8 h-8 rounded-full';
+      sizeClasses = 'w-10 h-10 rounded-full';
     }
     
     return `${baseClasses} ${themeClasses} ${sizeClasses}`;
@@ -382,10 +382,10 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
           <div 
             data-suggestion-dropdown
             className={`
-              fixed backdrop-blur-md border rounded-2xl shadow-2xl z-[9999] overflow-y-auto animate-slide-in-top
+              fixed border rounded-3xl shadow-depth-5 z-[9999] overflow-y-auto animate-slide-in-from-top
               ${actualTheme === 'dark' 
-                ? 'bg-gray-800/95 border-gray-700/50' 
-                : 'bg-white/95 border-white/20'
+                ? 'bg-gray-900/95 border-gray-700/50' 
+                : 'bg-white/95 border-white/30'
               }
               ${isMobile ? 'max-h-60' : 'max-h-80'}
               ${isMobile && isPortrait ? 'max-h-48' : ''}
@@ -405,19 +405,20 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
                 key={index}
                 onClick={(e) => handleSuggestionClick(suggestion, e)}
                 className={`
-                  w-full px-6 py-4 text-left transition-all duration-200 border-b last:border-b-0 font-medium first:rounded-t-2xl last:rounded-b-2xl
+                  w-full px-6 py-4 text-left transition-all duration-200 border-b last:border-b-0 font-medium first:rounded-t-3xl last:rounded-b-3xl touch-feedback hover-lift
                   ${actualTheme === 'dark' 
-                    ? 'hover:bg-gradient-to-r hover:from-purple-900/30 hover:to-cyan-900/30 border-gray-700/50 text-gray-200' 
-                    : 'hover:bg-gradient-to-r hover:from-purple-50 hover:to-cyan-50 border-gray-100/50 text-gray-800'
+                    ? 'hover:bg-gradient-to-r hover:from-purple-900/30 hover:to-cyan-900/30 border-gray-700/50 text-white' 
+                    : 'hover:bg-gradient-to-r hover:from-purple-50 hover:to-cyan-50 border-gray-100/50 text-gray-900'
                   }
                   ${isMobile ? 'py-3' : 'py-4'}
                 `}
+                style={{ animationDelay: `${index * 50}ms` }}
               >
                 <div className="flex items-center">
-                  <div className="w-5 h-5 mr-3 rounded-full bg-gradient-to-r from-purple-400 to-cyan-400 flex items-center justify-center">
+                  <div className="w-6 h-6 mr-4 rounded-full bg-gradient-brand flex items-center justify-center shadow-depth-2">
                     <SearchIcon className="w-3 h-3 text-white" />
                   </div>
-                  <span className="truncate">{suggestion}</span>
+                  <span className="truncate font-medium">{suggestion}</span>
                 </div>
               </button>
             ))}

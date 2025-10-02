@@ -1700,12 +1700,14 @@ const MiniConverter = () => {
                 />
               </div>
 
-              {/* Search Type Navigation */}
-              <ResponsiveNavigation
-                searchType={searchType}
-                onSearchTypeChange={handleTabChange}
-                visible={tabsVisible}
-              />
+              {/* Enhanced Search Type Navigation */}
+              <div className="transition-all duration-300">
+                <ResponsiveNavigation
+                  searchType={searchType}
+                  onSearchTypeChange={handleTabChange}
+                  visible={tabsVisible}
+                />
+              </div>
 
               {/* Loading State - Only show for image search or when no query */}
               {loading && !aiLoading && (searchType === 'image' || !query.trim()) && (
@@ -1723,29 +1725,29 @@ const MiniConverter = () => {
                 </div>
               )}
 
-              {/* Error Message */}
+              {/* Enhanced Error Message */}
               {errorMessage && (
-                <div className="max-w-2xl mx-auto mb-8 animate-in slide-in-from-top-3 duration-300">
-                  <div className="bg-red-500/20 backdrop-blur-md border-l-4 border-red-400 p-6 rounded-r-2xl shadow-xl border border-red-200/30">
+                <div className="max-w-2xl mx-auto mb-8 animate-slide-in-from-top">
+                  <div className="glass-heavy border-l-4 border-red-400 p-8 rounded-3xl shadow-depth-4 border border-red-200/30 hover-lift">
                     <div className="flex">
                       <div className="flex-shrink-0">
-                        <div className="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center">
-                          <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center shadow-depth-2">
+                          <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                           </svg>
                         </div>
                       </div>
-                      <div className="ml-4">
-                        <p className="text-red-300 font-bold text-lg">Houston, we have a problem</p>
-                        <p className="text-red-200 text-sm mt-1 font-medium">{errorMessage}</p>
+                      <div className="ml-6">
+                        <p className="text-red-300 font-bold text-xl">Houston, we have a problem</p>
+                        <p className="text-red-200 text-base mt-2 font-medium">{errorMessage}</p>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
-              {/* Mini Tools */}
+              {/* Enhanced Mini Tools */}
               {showMiniTool && (
-                <div className="animate-in slide-in-from-top-3 duration-500">
+                <div className="animate-slide-in-from-top">
                   {showMiniTool === 'timer' && <MiniTimer />}
                   {showMiniTool === 'calculator' && <MiniCalculator />}
                   {showMiniTool === 'translator' && <MiniTranslator />}
@@ -1781,9 +1783,9 @@ const MiniConverter = () => {
                 </div>
               )}
 
-              {/* Search Results */}
+              {/* Enhanced Search Results */}
               {results.length > 0 && !loading && (
-                <div className="mb-12 animate-in slide-in-from-bottom-4 duration-500">
+                <div className="mb-12 animate-slide-in-from-bottom">
                   <ResponsiveResultGrid
                     results={results}
                     searchType={searchType}
@@ -1797,44 +1799,44 @@ const MiniConverter = () => {
               {results.length > 0 && !loading && (
                 <div ref={loadMoreRef} className="text-center py-12 min-h-[120px] flex items-center justify-center">
                   {loadingMore && (
-                    <div className="inline-flex flex-col items-center animate-in fade-in duration-300">
-                      <div className="relative mb-4">
+                    <div className="inline-flex flex-col items-center animate-fade-in">
+                      <div className="relative mb-6">
                         <LoadingSpinner size="lg" color="secondary" />
-                        <div className="absolute inset-0 animate-ping rounded-full h-10 w-10 border-4 border-cyan-400/50"></div>
+                        <div className="absolute inset-0 animate-ping rounded-full h-12 w-12 border-4 border-cyan-400/50"></div>
                       </div>
-                      <span className="text-white font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">Loading more results...</span>
+                      <span className="text-white font-bold text-gradient text-lg">Loading more results...</span>
                     </div>
                   )}
                   {!hasMore && !loadingMore && (
-                    <div className={`backdrop-blur-md px-8 py-4 rounded-2xl inline-block border shadow-xl ${
+                    <div className={`glass-heavy px-10 py-6 rounded-3xl inline-block border shadow-depth-4 hover-lift ${
                       actualTheme === 'dark' 
-                        ? 'bg-gray-800/20 text-white border-gray-700/30' 
-                        : 'bg-white/20 text-white border-white/30'
+                        ? 'glass-dark text-white border-gray-700/30' 
+                        : 'glass-primary text-white border-white/30'
                     }`}>
                       <div className="flex items-center">
-                        <CheckIcon className="w-5 h-5 mr-3 text-purple-400" animated />
-                        <span className="font-bold">
+                        <CheckIcon className="w-6 h-6 mr-4 text-purple-400" animated />
+                        <span className="font-bold text-lg">
                           {results.length >= 100 ? 'Reached maximum results (100)' : 'No more results found'}
                         </span>
                       </div>
                     </div>
                   )}
                   {hasMore && !loadingMore && (
-                    <div className={`backdrop-blur-md px-6 py-3 rounded-2xl inline-block border shadow-lg animate-pulse ${
+                    <div className={`glass-primary px-8 py-4 rounded-3xl inline-block border shadow-depth-3 animate-pulse hover-lift ${
                       actualTheme === 'dark' 
-                        ? 'bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border-gray-700/20 text-white' 
-                        : 'bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border-white/20 text-white'
+                        ? 'glass-dark border-gray-700/20 text-white' 
+                        : 'glass-primary border-white/20 text-white'
                     }`}>
                       <div className="flex items-center">
-                        <ArrowDownIcon className="w-4 h-4 mr-2 text-cyan-400" animated />
-                        <span className="font-medium text-sm">Scroll for more cosmic discoveries</span>
+                        <ArrowDownIcon className="w-5 h-5 mr-3 text-cyan-400" animated />
+                        <span className="font-semibold text-base">Scroll for more cosmic discoveries</span>
                       </div>
-                      <div className="text-xs opacity-60 mt-1">
+                      <div className="text-sm opacity-70 mt-2">
                         Page {currentPage} • {results.length} results
                       </div>
                       <button
                         onClick={loadMoreResults}
-                        className="mt-2 px-4 py-1 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors duration-200"
+                        className="mt-3 px-6 py-2 text-sm bg-gradient-brand hover:from-purple-700 hover:to-cyan-700 text-white rounded-xl transition-all duration-200 touch-feedback hover-scale"
                       >
                         Load More Manually
                       </button>
@@ -1917,32 +1919,32 @@ const MiniConverter = () => {
               document.body
             )}
 
-            {/* Floating elements for extra visual flair - Hidden on mobile to avoid conflict with TouchFAB */}
+            {/* Enhanced floating elements for extra visual flair - Hidden on mobile to avoid conflict with TouchFAB */}
             {!isMobile && (
               <div className="fixed bottom-8 right-8 z-40">
               {results.length > 0 && (
-                <div className={`backdrop-blur-md text-white px-4 py-2 rounded-xl border shadow-lg animate-in slide-in-from-bottom-5 duration-500 ${
+                <div className={`glass-heavy text-white px-6 py-4 rounded-2xl border shadow-depth-4 animate-slide-in-from-bottom hover-lift ${
                   actualTheme === 'dark' 
-                    ? 'bg-gray-800/20 border-gray-700/30' 
-                    : 'bg-white/20 border-white/30'
+                    ? 'glass-dark border-gray-700/30' 
+                    : 'glass-primary border-white/30'
                 }`}>
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center text-sm font-medium">
-                      <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center text-base font-semibold">
+                      <div className="w-3 h-3 bg-green-400 rounded-full mr-3 animate-pulse shadow-depth-1"></div>
                       {results.length} results found
                     </div>
                     <button
                       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                       className={`
-                        flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 hover:scale-110
+                        flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 touch-feedback hover-scale focus-ring
                         ${actualTheme === 'dark' 
-                          ? 'bg-purple-600/80 hover:bg-purple-500/90 text-white' 
-                          : 'bg-purple-600/80 hover:bg-purple-500/90 text-white'
+                          ? 'bg-gradient-brand hover:from-purple-700 hover:to-cyan-700 text-white shadow-depth-2' 
+                          : 'bg-gradient-brand hover:from-purple-700 hover:to-cyan-700 text-white shadow-depth-2'
                         }
                       `}
                       title="Go to top"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
                       </svg>
                     </button>

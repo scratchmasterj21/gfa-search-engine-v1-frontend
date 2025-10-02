@@ -38,35 +38,35 @@ const ThemeToggle: React.FC = () => {
     <button
       onClick={toggleTheme}
       className={`
-        relative p-3 rounded-xl transition-all duration-300 group
+        relative p-4 rounded-2xl transition-all duration-300 group touch-feedback hover-lift focus-ring
         ${actualTheme === 'dark' 
-          ? 'bg-gray-800/50 hover:bg-gray-700/50 text-gray-200 hover:text-white border border-gray-700/50 hover:border-gray-600/50' 
-          : 'bg-white/50 hover:bg-white/70 text-gray-600 hover:text-gray-800 border border-gray-200/50 hover:border-gray-300/50'
+          ? 'glass-dark hover:glass-heavy text-gray-200 hover:text-white border border-gray-700/30 hover:border-gray-600/40' 
+          : 'glass-primary hover:glass-heavy text-gray-600 hover:text-gray-800 border border-white/20 hover:border-gray-300/40'
         }
-        backdrop-blur-md shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95
+        shadow-depth-3 hover:shadow-depth-5
       `}
       title={getTooltip()}
     >
       <div className="relative">
         {getIcon()}
-        {/* Animated ring effect */}
+        {/* Enhanced animated ring effect */}
         <div className={`
           absolute inset-0 rounded-full transition-all duration-300
           ${actualTheme === 'dark' 
-            ? 'group-hover:ring-2 group-hover:ring-purple-400/30' 
-            : 'group-hover:ring-2 group-hover:ring-cyan-400/30'
+            ? 'group-hover:ring-2 group-hover:ring-purple-400/40 group-hover:glow-purple' 
+            : 'group-hover:ring-2 group-hover:ring-cyan-400/40 group-hover:glow-cyan'
           }
         `} />
       </div>
       
-      {/* Theme indicator dot */}
+      {/* Enhanced theme indicator dot */}
       <div className={`
-        absolute -top-1 -right-1 w-3 h-3 rounded-full transition-all duration-300
+        absolute -top-1 -right-1 w-4 h-4 rounded-full transition-all duration-300 shadow-depth-2
         ${theme === 'system' 
-          ? 'bg-blue-500' 
+          ? 'bg-gradient-tech' 
           : actualTheme === 'dark' 
-            ? 'bg-purple-500' 
-            : 'bg-yellow-500'
+            ? 'bg-gradient-brand' 
+            : 'bg-gradient-to-r from-yellow-400 to-orange-500'
         }
         ${theme === 'system' ? 'animate-pulse' : ''}
       `} />

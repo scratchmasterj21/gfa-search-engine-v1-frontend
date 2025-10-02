@@ -1,6 +1,6 @@
-/* Responsive Design System */
+/* Enhanced Visual Design System */
 
-/* CSS Custom Properties for consistent spacing */
+/* CSS Custom Properties for consistent spacing and design tokens */
 :root {
   /* Breakpoints */
   --mobile: 768px;
@@ -8,24 +8,27 @@
   --desktop: 1440px;
   --large-desktop: 1920px;
 
-  /* Spacing */
+  /* Enhanced Spacing */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
   --spacing-md: 1rem;
   --spacing-lg: 1.5rem;
   --spacing-xl: 2rem;
   --spacing-2xl: 3rem;
+  --spacing-3xl: 4rem;
+  --spacing-4xl: 6rem;
 
   /* Touch targets */
   --touch-target-min: 44px;
   --touch-target-comfortable: 48px;
 
-  /* Animation durations */
+  /* Enhanced Animation durations */
   --animation-fast: 150ms;
   --animation-normal: 250ms;
   --animation-slow: 350ms;
+  --animation-slower: 500ms;
 
-  /* Z-index layers */
+  /* Enhanced Z-index layers */
   --z-dropdown: 1000;
   --z-sticky: 1020;
   --z-fixed: 1030;
@@ -33,6 +36,44 @@
   --z-modal: 1050;
   --z-popover: 1060;
   --z-tooltip: 1070;
+  --z-floating: 1080;
+
+  /* Glassmorphism properties */
+  --glass-blur-sm: 4px;
+  --glass-blur-md: 8px;
+  --glass-blur-lg: 12px;
+  --glass-blur-xl: 16px;
+  --glass-blur-2xl: 24px;
+  --glass-blur-3xl: 32px;
+
+  /* Glass transparency levels */
+  --glass-opacity-light: 0.1;
+  --glass-opacity-medium: 0.05;
+  --glass-opacity-dark: 0.02;
+  --glass-opacity-heavy: 0.15;
+
+  /* Enhanced shadow depths */
+  --shadow-depth-1: 0 1px 3px rgba(0,0,0,0.1);
+  --shadow-depth-2: 0 4px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-depth-3: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+  --shadow-depth-4: 0 20px 25px rgba(0,0,0,0.1), 0 10px 10px rgba(0,0,0,0.04);
+  --shadow-depth-5: 0 25px 50px rgba(0,0,0,0.25);
+
+  /* Glow effects */
+  --glow-purple: 0 0 20px rgba(139, 92, 246, 0.3);
+  --glow-cyan: 0 0 20px rgba(6, 182, 212, 0.3);
+  --glow-pink: 0 0 20px rgba(236, 72, 153, 0.3);
+  --glow-white: 0 0 20px rgba(255, 255, 255, 0.2);
+
+  /* Border radius scale */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
+  --radius-5xl: 2.5rem;
 }
 
 /* Mobile-first responsive utilities */
@@ -244,11 +285,55 @@
 .animate-stagger-4 { animation-delay: 150ms; }
 .animate-stagger-5 { animation-delay: 200ms; }
 
-/* Touch feedback */
+/* Enhanced Glassmorphism System */
+.glass-primary {
+  backdrop-filter: blur(var(--glass-blur-lg));
+  background: rgba(255, 255, 255, var(--glass-opacity-light));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glass-secondary {
+  backdrop-filter: blur(var(--glass-blur-md));
+  background: rgba(255, 255, 255, var(--glass-opacity-medium));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.glass-tertiary {
+  backdrop-filter: blur(var(--glass-blur-sm));
+  background: rgba(255, 255, 255, var(--glass-opacity-dark));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-heavy {
+  backdrop-filter: blur(var(--glass-blur-2xl));
+  background: rgba(255, 255, 255, var(--glass-opacity-heavy));
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.glass-dark {
+  backdrop-filter: blur(var(--glass-blur-lg));
+  background: rgba(0, 0, 0, var(--glass-opacity-light));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Enhanced Shadow System */
+.shadow-depth-1 { box-shadow: var(--shadow-depth-1); }
+.shadow-depth-2 { box-shadow: var(--shadow-depth-2); }
+.shadow-depth-3 { box-shadow: var(--shadow-depth-3); }
+.shadow-depth-4 { box-shadow: var(--shadow-depth-4); }
+.shadow-depth-5 { box-shadow: var(--shadow-depth-5); }
+
+/* Glow Effects */
+.glow-purple { box-shadow: var(--glow-purple); }
+.glow-cyan { box-shadow: var(--glow-cyan); }
+.glow-pink { box-shadow: var(--glow-pink); }
+.glow-white { box-shadow: var(--glow-white); }
+
+/* Enhanced Touch feedback */
 .touch-feedback {
   position: relative;
   overflow: hidden;
-  transition: transform var(--animation-fast) ease;
+  transition: all var(--animation-fast) cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .touch-feedback:active {
@@ -263,14 +348,46 @@
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%);
   transform: translate(-50%, -50%);
-  transition: width 0.3s, height 0.3s;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .touch-feedback:active::before {
   width: 300px;
   height: 300px;
+}
+
+/* Enhanced Ripple Effect */
+.ripple-enhanced {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-enhanced::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.4) 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+  animation: ripple-enhanced 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes ripple-enhanced {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+  100% {
+    width: 300px;
+    height: 300px;
+    opacity: 0;
+  }
 }
 
 /* Ripple effect */
@@ -353,6 +470,203 @@
   perspective: 1000px;
 }
 
+/* Enhanced Micro-interactions */
+.hover-lift {
+  transition: all var(--animation-normal) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-depth-4);
+}
+
+/* Enhanced Tab Animations */
+.tab-slide {
+  position: relative;
+  overflow: hidden;
+}
+
+.tab-slide::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.tab-slide:hover::before {
+  left: 100%;
+}
+
+/* Tab switching animation */
+.tab-switch {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tab-switch.active {
+  transform: scale(1.05);
+  z-index: 10;
+}
+
+.tab-switch.inactive {
+  transform: scale(1);
+  z-index: 1;
+}
+
+.hover-glow {
+  transition: all var(--animation-normal) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-glow:hover {
+  box-shadow: var(--glow-purple);
+}
+
+.hover-scale {
+  transition: all var(--animation-normal) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+.hover-rotate {
+  transition: all var(--animation-normal) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-rotate:hover {
+  transform: rotate(5deg);
+}
+
+/* Enhanced Button States */
+.btn-primary {
+  background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 50%, #06B6D4 100%);
+  border: none;
+  border-radius: var(--radius-2xl);
+  padding: 0.75rem 1.5rem;
+  color: white;
+  font-weight: 600;
+  transition: all var(--animation-normal) cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-primary:hover::before {
+  left: 100%;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-depth-3), var(--glow-purple);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-depth-2);
+}
+
+/* Enhanced Card Styles */
+.card-enhanced {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(var(--glass-blur-lg));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-3xl);
+  box-shadow: var(--shadow-depth-2);
+  transition: all var(--animation-normal) cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-enhanced::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+}
+
+.card-enhanced:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-depth-4), var(--glow-cyan);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Enhanced Loading States */
+.loading-skeleton {
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0.1) 25%, 
+    rgba(255, 255, 255, 0.2) 50%, 
+    rgba(255, 255, 255, 0.1) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+  border-radius: var(--radius-lg);
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Enhanced Focus States */
+.focus-ring {
+  transition: all var(--animation-fast) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.focus-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3);
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+/* Enhanced Typography */
+.text-gradient {
+  background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 50%, #06B6D4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-glow {
+  text-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+}
+
+/* Enhanced Border Effects */
+.border-gradient {
+  border: 2px solid transparent;
+  background: linear-gradient(white, white) padding-box,
+              linear-gradient(135deg, #8B5CF6, #EC4899, #06B6D4) border-box;
+}
+
+.border-animated {
+  border: 2px solid transparent;
+  background: linear-gradient(white, white) padding-box,
+              linear-gradient(135deg, #8B5CF6, #EC4899, #06B6D4) border-box;
+  background-size: 200% 200%;
+  animation: border-flow 3s ease infinite;
+}
+
+@keyframes border-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -361,6 +675,12 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  
+  .hover-lift:hover,
+  .hover-scale:hover,
+  .hover-rotate:hover {
+    transform: none !important;
   }
 }
 
