@@ -70,6 +70,7 @@ const saveToFirebase = async (deviceId: string): Promise<void> => {
       deviceId: deviceId,
       deviceName: deviceId,
       isNamed: false,
+      searchBlocked: false, // Default value for search blocking
       firstVisit: new Date().toISOString(),
       lastSeen: new Date().toISOString(),
       userAgent: navigator.userAgent,
@@ -180,6 +181,27 @@ export const initializeDeviceRegistration = async (): Promise<void> => {
     }
   } catch (error) {
     console.warn('Device registration failed:', error);
+  }
+};
+
+// Function to check if device search is blocked
+export const isDeviceSearchBlocked = async (): Promise<boolean> => {
+  try {
+    const deviceId = await getDeviceId();
+    const deviceRef = ref(database, `deviceRegistry/${deviceId}`);
+    const snapshot = await get(deviceRef);
+    
+    if (snapshot.exists()) {
+      const deviceData = snapshot.val();
+      return deviceData.searchBlocked;
+    }
+    
+    // If device doesn't exist in Firebase, allow search (new device)
+    return false;
+  } catch (error) {
+    console.warn('Failed to check device search status:', error);
+    // If there's an error checking, allow search to prevent blocking users
+    return false;
   }
 };
 

@@ -15,6 +15,7 @@ interface ResponsiveSearchBarProps {
   suggestions?: string[];
   onSuggestionClick?: (suggestion: string) => void;
   isLoading?: boolean;
+  disabled?: boolean;
 }
 
 const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
@@ -26,7 +27,8 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
   placeholder = "Search the universe...",
   suggestions = [],
   onSuggestionClick,
-  isLoading = false
+  isLoading = false,
+  disabled = false
 }) => {
   const { isMobile, isTablet, isPortrait } = useResponsive();
   const { actualTheme } = useTheme();
@@ -319,8 +321,9 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
           onKeyDown={handleKeyPress}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          placeholder={placeholder}
+          placeholder={disabled ? "Search disabled" : placeholder}
           className={getInputClasses()}
+          disabled={disabled}
         />
 
         {/* Clear Button - Only show when there's text */}
@@ -350,7 +353,7 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
         {/* Search Button */}
         <button
           onClick={handleSearch}
-          disabled={isLoading}
+          disabled={isLoading || disabled}
           className={getButtonClasses()}
         >
           {isMobile && isPortrait ? (

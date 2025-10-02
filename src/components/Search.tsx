@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { useSearchParams } from 'react-router-dom';
-import { logSearch, initializeDeviceRegistration } from './firebase'; // Import the logging function
+import { logSearch, initializeDeviceRegistration, isDeviceSearchBlocked } from './firebase'; // Import the logging function
 import { useTheme } from '../contexts/ThemeContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { useTouchGestures, useHapticFeedback } from '../hooks/useTouchGestures';
@@ -99,6 +99,7 @@ const Search: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<SearchResult | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isSearchBlocked, setIsSearchBlocked] = useState<boolean>(false);
   
   // AI-related state
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
@@ -1142,9 +1143,14 @@ const MiniConverter = () => {
 };
 
 
-  // Initialize device registration on component mount
+  // Initialize device registration and check search blocking status on component mount
   useEffect(() => {
-    initializeDeviceRegistration();
+    const initializeApp = async () => {
+      await initializeDeviceRegistration();
+      const blocked = await isDeviceSearchBlocked();
+      setIsSearchBlocked(blocked);
+    };
+    initializeApp();
   }, []);
 
   useEffect(() => {
@@ -1192,6 +1198,12 @@ const MiniConverter = () => {
   // Create a helper function that accepts the query and search type as parameters
   const performSearchWithQuery = useCallback(async (searchQuery: string, page: number, isLoadMore = false, searchTypeParam?: 'web' | 'image') => {
     if (!searchQuery) return;
+
+    // Check if device search is blocked
+    if (isSearchBlocked) {
+      setErrorMessage('Search is currently disabled on this device. Please contact support if you believe this is an error.');
+      return;
+    }
 
     // Use the provided search type or fall back to current state
     const currentSearchType = searchTypeParam || searchType;
@@ -1329,7 +1341,7 @@ const MiniConverter = () => {
         setLoading(false);
       }
     }
-  }, [searchType, loading, loadingMore, setSearchParams, handleAIResponse]);
+  }, [searchType, loading, loadingMore, setSearchParams, handleAIResponse, isSearchBlocked]);
 
   // Update the original performSearch to use the new helper
   const performSearch = useCallback(async (page: number, isLoadMore = false) => {
@@ -1697,8 +1709,32 @@ const MiniConverter = () => {
                   suggestions={suggestions}
                   onSuggestionClick={handleSuggestionClick}
                   isLoading={loading}
+                  disabled={isSearchBlocked}
                 />
               </div>
+
+              {/* Search Blocked Message */}
+              {isSearchBlocked && (
+                <div className="max-w-2xl mx-auto mb-8 animate-slide-in-from-top">
+                  <div className="glass-heavy border-l-4 border-red-400 p-8 rounded-3xl shadow-depth-4 border border-red-200/30 hover-lift">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center shadow-depth-2">
+                          <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="ml-6">
+                        <p className="text-red-300 font-bold text-xl">Search Disabled</p>
+                        <p className="text-red-200 text-base mt-2 font-medium">
+                          Search functionality is currently disabled on this device. Please contact support if you believe this is an error.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Enhanced Search Type Navigation */}
               <div className="transition-all duration-300">
