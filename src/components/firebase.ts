@@ -248,3 +248,101 @@ export const logSearch = async (query: string, searchType: 'web' | 'image', orig
   } catch (error) {
   }
 };
+
+// AI Chat logging function
+export interface AISource {
+  id: string;
+  title: string;
+  url: string;
+  snippet: string;
+  domain: string;
+  citationNumber: number;
+}
+
+export interface AILogMetadata {
+  messageNumber: number;
+  conversationLength: number;
+  sources: AISource[];
+  relatedQuestions: string[];
+  confidence: number;
+  tokensUsed?: number;
+  processingTime: number;
+  aiModel: string;
+  wasRegenerated?: boolean;
+}
+
+export const logAIChat = async (
+  userMessage: string,
+  aiResponse: string,
+  conversationId: string,
+  metadata: AILogMetadata
+) => {
+  try {
+    const deviceId = await getDeviceId();
+    
+    // Safeguard: Don't log if no device ID
+    if (!deviceId) {
+      console.warn('No device ID found - skipping AI chat log');
+      return;
+    }
+    
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    
+    // Path: aiChatLogs/{year}/{month}/{day}
+    const aiChatLogRef = ref(database, `aiChatLogs/${year}/${month}/${day}`);
+    
+    // Format date as MM/DD/YYYY HH:MM:SS
+    const formattedDate = `${month}/${day}/${year} ${now.toTimeString().split(' ')[0]}`;
+    
+    const logData = {
+      // Basic Info
+      date: formattedDate,
+      deviceId: deviceId,
+      conversationId: conversationId,
+      
+      // Messages
+      userMessage: userMessage,
+      aiResponse: aiResponse,
+      
+      // Context
+      messageNumber: metadata.messageNumber,
+      conversationLength: metadata.conversationLength,
+      hasConversationHistory: metadata.messageNumber > 1,
+      
+      // AI Metadata
+      aiModel: metadata.aiModel,
+      confidence: metadata.confidence,
+      tokensUsed: metadata.tokensUsed || 0,
+      processingTime: metadata.processingTime,
+      
+      // Sources
+      sources: metadata.sources.map(s => ({
+        title: s.title,
+        url: s.url,
+        domain: s.domain,
+        snippet: s.snippet,
+        citationNumber: s.citationNumber
+      })),
+      sourcesCount: metadata.sources.length,
+      
+      // Related Questions
+      relatedQuestions: metadata.relatedQuestions,
+      
+      // User Actions
+      wasRegenerated: metadata.wasRegenerated || false,
+      
+      // Technical
+      timestamp: serverTimestamp(),
+      userAgent: navigator.userAgent
+    };
+    
+    await push(aiChatLogRef, logData);
+    console.log('AI chat logged successfully');
+  } catch (error) {
+    console.error('Failed to log AI chat:', error);
+    // Silent fail - don't disrupt user experience
+  }
+};

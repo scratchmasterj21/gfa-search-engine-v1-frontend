@@ -14,6 +14,7 @@ import ResponsiveResultGrid from './ResponsiveResultGrid';
 import ResponsiveNavigation from './ResponsiveNavigation';
 import TouchFAB from './TouchFAB';
 import PullToRefresh from './PullToRefresh';
+import AIMode from './AIMode/AIMode';
 import { aiService, AIResponse } from '../services/aiService';
 import { 
   LoadingSpinner, 
@@ -86,13 +87,13 @@ const Search: React.FC = () => {
   const { triggerHaptic } = useHapticFeedback();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get('query') || '';
-  const initialSearchType = (searchParams.get('searchType') as 'web' | 'image') || 'web';
+  const initialSearchType = (searchParams.get('searchType') as 'web' | 'image' | 'ai') || 'web';
 
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [searchType, setSearchType] = useState<'web' | 'image'>(initialSearchType);
+  const [searchType, setSearchType] = useState<'web' | 'image' | 'ai'>(initialSearchType);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [tabsVisible, setTabsVisible] = useState(initialQuery !== '');
@@ -1313,8 +1314,11 @@ const MiniConverter = () => {
 
       // Log the search to Firebase (only for new searches, not pagination)
       // If all results were filtered out, log with blank results to track blocked keyword attempts
-      const resultsToLog = originalResults.length === 0 ? [] : originalResults;
-      await logSearch(searchQuery, currentSearchType, resultsToLog);
+      // Skip logging for AI mode as it uses a different endpoint
+      if (currentSearchType !== 'ai') {
+        const resultsToLog = originalResults.length === 0 ? [] : originalResults;
+        await logSearch(searchQuery, currentSearchType, resultsToLog);
+      }
     
 
     } catch (error) {
@@ -1328,7 +1332,8 @@ const MiniConverter = () => {
       
       // Log the search even if it failed (for new searches only, not pagination)
       // This helps track blocked keyword attempts that cause API errors
-      if (!isLoadMore) {
+      // Skip logging for AI mode as it uses a different endpoint
+      if (!isLoadMore && currentSearchType !== 'ai') {
         try {
           await logSearch(searchQuery, currentSearchType, []);
         } catch (logError) {
@@ -1549,17 +1554,27 @@ const MiniConverter = () => {
   };
 
 
-  const handleTabChange = (type: 'web' | 'image') => {
+  const handleTabChange = (type: 'web' | 'image' | 'ai') => {
+    setSearchType(type);
+    
+    // AI Mode doesn't need traditional search results
+    if (type === 'ai') {
+      setResults([]);
+      setAiResponse(null);
+      setAiLoading(false);
+      setAiError(null);
+      setTabsVisible(true);
+      return;
+    }
     
     // Only clear results if we have a query to search with
     if (query.trim()) {
-      setSearchType(type);
       setCurrentPage(1);
       setHasMore(true);
       setResults([]);
       
-      // Clear AI state when switching to image search
-      if (type === 'image') {
+      // Clear AI state when switching to image or web search
+      if (type === 'image' || type === 'web') {
         setAiResponse(null);
         setAiLoading(false);
         setAiError(null);
@@ -1568,9 +1583,6 @@ const MiniConverter = () => {
       // Perform new search with the same query but different type
       // Pass the new search type explicitly to avoid race condition
       performSearchWithQuery(query, 1, false, type);
-    } else {
-      // Just change the type if no query
-      setSearchType(type);
     }
   };
 
@@ -1704,18 +1716,78 @@ const MiniConverter = () => {
               <div className={`relative transition-all duration-300 ${
                 isMobile ? 'mb-6' : 'mb-8'
               }`}>
-                <ResponsiveSearchBar
-                  query={query}
-                  onQueryChange={handleQueryChange}
-                  onSearch={handleSearchClick}
-                  onFocus={() => {}}
-                  onBlur={() => {}}
-                  placeholder="Search the universe..."
-                  suggestions={suggestions}
-                  onSuggestionClick={handleSuggestionClick}
-                  isLoading={loading}
-                  disabled={isSearchBlocked}
-                />
+                {/* Hide Search Bar when AI Mode is active */}
+                {searchType !== 'ai' && (
+                  <div className="animate-fade-in">
+                    <ResponsiveSearchBar
+                      query={query}
+                      onQueryChange={handleQueryChange}
+                      onSearch={handleSearchClick}
+                      onFocus={() => {}}
+                      onBlur={() => {}}
+                      placeholder="Search the universe..."
+                      suggestions={suggestions}
+                      onSuggestionClick={handleSuggestionClick}
+                      isLoading={loading}
+                      disabled={isSearchBlocked}
+                    />
+                  </div>
+                )}
+
+                {/* AI Mode Toggle - Google Style (Centered) - Always visible */}
+                <div className={`flex flex-col items-center gap-2 ${
+                  searchType === 'ai' 
+                    ? isMobile ? 'mt-0' : 'mt-0' 
+                    : isMobile ? 'mt-3' : 'mt-4'
+                }`}>
+                  <button
+                    onClick={() => {
+                      setSearchType(searchType === 'ai' ? 'web' : 'ai');
+                      triggerHaptic('light');
+                    }}
+                    className={`
+                      group flex items-center gap-2 px-4 py-2 rounded-full
+                      transition-all duration-300 hover-scale touch-feedback
+                      ${searchType === 'ai'
+                        ? actualTheme === 'dark'
+                          ? 'bg-gradient-to-r from-purple-600 to-cyan-600 text-white shadow-glow'
+                          : 'bg-gradient-brand text-white shadow-lg'
+                        : actualTheme === 'dark'
+                          ? 'bg-gray-800/80 text-gray-300 hover:bg-gray-700/80 border border-gray-600/50'
+                          : 'bg-white/90 text-gray-700 hover:bg-gray-50 border border-gray-300 shadow-sm'
+                      }
+                    `}
+                  >
+                    <svg 
+                      className={`w-4 h-4 ${searchType === 'ai' ? 'animate-pulse' : ''}`}
+                      fill="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M12 2L9.5 8.5L3 9l6 5.5L7.5 22 12 18.5 16.5 22 15 14.5l6-5.5-6.5-.5z"/>
+                    </svg>
+                    <span className={`font-medium ${isMobile ? 'text-sm' : 'text-sm'}`}>
+                      {searchType === 'ai' ? 'Exit AI Mode' : 'Try AI Mode'}
+                    </span>
+                    {searchType === 'ai' ? (
+                      <svg 
+                        className="w-4 h-4" 
+                        fill="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M6 18L18 6M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                    ) : null}
+                  </button>
+
+                  {searchType === 'ai' && (
+                    <span className={`
+                      text-xs text-center animate-slide-in-from-top
+                      ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'}
+                    `}>
+                      Click to return to web search
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Search Blocked Message */}
@@ -1741,17 +1813,24 @@ const MiniConverter = () => {
                 </div>
               )}
 
-              {/* Enhanced Search Type Navigation */}
-              <div className="transition-all duration-300">
-                <ResponsiveNavigation
-                  searchType={searchType}
-                  onSearchTypeChange={handleTabChange}
-                  visible={tabsVisible}
-                />
-              </div>
+              {/* Enhanced Search Type Navigation - Only for Web/Image */}
+              {searchType !== 'ai' && (
+                <div className="transition-all duration-300">
+                  <ResponsiveNavigation
+                    searchType={searchType}
+                    onSearchTypeChange={handleTabChange}
+                    visible={tabsVisible}
+                  />
+                </div>
+              )}
 
-              {/* Loading State - Only show for image search or when no query */}
-              {loading && !aiLoading && (searchType === 'image' || !query.trim()) && (
+              {/* AI Mode - Full takeover when active */}
+              {searchType === 'ai' && (
+                <AIMode initialQuery={query} />
+              )}
+
+              {/* Loading State - Only show for web/image search (not AI mode) */}
+              {searchType !== 'ai' && loading && !aiLoading && (searchType === 'image' || !query.trim()) && (
                 <div className="text-center py-16 animate-in fade-in duration-300">
                   <div className="inline-flex flex-col items-center">
                     <div className="relative mb-6">
@@ -1766,8 +1845,8 @@ const MiniConverter = () => {
                 </div>
               )}
 
-              {/* Enhanced Error Message */}
-              {errorMessage && (
+              {/* Enhanced Error Message - Only for web/image search */}
+              {searchType !== 'ai' && errorMessage && (
                 <div className="max-w-2xl mx-auto mb-8 animate-slide-in-from-top">
                   <div className="glass-heavy border-l-4 border-red-400 p-8 rounded-3xl shadow-depth-4 border border-red-200/30 hover-lift">
                     <div className="flex">
@@ -1786,8 +1865,8 @@ const MiniConverter = () => {
                   </div>
                 </div>
               )}
-              {/* Enhanced Mini Tools */}
-              {showMiniTool && (
+              {/* Enhanced Mini Tools - Only for web/image search */}
+              {searchType !== 'ai' && showMiniTool && (
                 <div className="animate-slide-in-from-top">
                   {showMiniTool === 'timer' && <MiniTimer />}
                   {showMiniTool === 'calculator' && <MiniCalculator />}
@@ -1796,8 +1875,8 @@ const MiniConverter = () => {
                   {showMiniTool === 'converter' && <MiniConverter />}
                 </div>
               )}
-              {/* AI Results */}
-              {(aiResponse || aiLoading || aiError) && searchType === 'web' && (
+              {/* AI Results - Only for web search (not AI mode) */}
+              {searchType === 'web' && (aiResponse || aiLoading || aiError) && (
                 <div className="max-w-4xl mx-auto mb-6">
                   <AIResultsCard
                     aiResponse={aiResponse}
@@ -1809,8 +1888,8 @@ const MiniConverter = () => {
                 </div>
               )}
 
-              {/* Show main loading only if AI is not loading and we have a query */}
-              {loading && !aiLoading && query.trim() && searchType === 'web' && (
+              {/* Show main loading only if AI is not loading and we have a query - not in AI mode */}
+              {searchType !== 'ai' && loading && !aiLoading && query.trim() && searchType === 'web' && (
                 <div className="text-center py-8 animate-in fade-in duration-300">
                   <div className="inline-flex flex-col items-center">
                     <div className="relative mb-4">
@@ -1824,8 +1903,8 @@ const MiniConverter = () => {
                 </div>
               )}
 
-              {/* Enhanced Search Results */}
-              {results.length > 0 && !loading && (
+              {/* Enhanced Search Results - Only for web/image search */}
+              {searchType !== 'ai' && results.length > 0 && !loading && (
                 <div className="mb-12 animate-slide-in-from-bottom">
                   <ResponsiveResultGrid
                     results={results}
@@ -1836,8 +1915,8 @@ const MiniConverter = () => {
                 </div>
               )}
 
-              {/* Load More Trigger & Loading More Indicator */}
-              {results.length > 0 && !loading && (
+              {/* Load More Trigger & Loading More Indicator - Only for web/image search */}
+              {searchType !== 'ai' && results.length > 0 && !loading && (
                 <div ref={loadMoreRef} className="text-center py-12 min-h-[120px] flex items-center justify-center">
                   {loadingMore && (
                     <div className="inline-flex flex-col items-center animate-fade-in">
@@ -1961,7 +2040,7 @@ const MiniConverter = () => {
             )}
 
             {/* Enhanced floating elements for extra visual flair - Hidden on mobile to avoid conflict with TouchFAB */}
-            {!isMobile && (
+            {!isMobile && searchType !== 'ai' && (
               <div className="fixed bottom-8 right-8 z-40">
               {results.length > 0 && (
                 <div className={`glass-heavy text-white px-6 py-4 rounded-2xl border shadow-depth-4 animate-slide-in-from-bottom hover-lift ${
@@ -1995,8 +2074,8 @@ const MiniConverter = () => {
               </div>
             )}
 
-            {/* Mobile Components */}
-            {results.length > 0 && (
+            {/* Mobile Components - Only for web/image search */}
+            {searchType !== 'ai' && results.length > 0 && (
               <>
                 {/* TouchFAB with always visible result counter and go to top */}
                 <TouchFAB

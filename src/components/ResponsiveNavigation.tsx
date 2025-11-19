@@ -4,7 +4,7 @@ import { useTouchGestures, useHapticFeedback } from '../hooks/useTouchGestures';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface ResponsiveNavigationProps {
-  searchType: 'web' | 'image';
+  searchType: 'web' | 'image' | 'ai';
   onSearchTypeChange: (type: 'web' | 'image') => void;
   visible: boolean;
 }
