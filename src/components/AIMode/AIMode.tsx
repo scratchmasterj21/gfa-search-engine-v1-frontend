@@ -14,7 +14,7 @@ interface AIModeProps {
 
 const AIMode: React.FC<AIModeProps> = ({ initialQuery = '' }) => {
   const { actualTheme } = useTheme();
-  const { isMobile, isPortrait } = useResponsive();
+  const { isMobile } = useResponsive();
   const { triggerHaptic } = useHapticFeedback();
 
   const [query, setQuery] = useState(initialQuery);
