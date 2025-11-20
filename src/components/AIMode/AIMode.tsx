@@ -106,7 +106,7 @@ const AIMode: React.FC<AIModeProps> = ({ initialQuery = '' }) => {
             confidence: response.confidence,
             tokensUsed: response.tokensUsed,
             processingTime: response.processingTime,
-            aiModel: 'gemini-2.0-flash-lite',
+            aiModel: 'llama-3.1-8b-instruct',
             wasRegenerated: isRegeneration
           }
         );
@@ -215,7 +215,7 @@ const AIMode: React.FC<AIModeProps> = ({ initialQuery = '' }) => {
                 text-xs
                 ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'}
               `}>
-                Powered by Gemini
+                Powered by CloudFlareAI
               </p>
             </div>
           </div>
