@@ -37,6 +37,7 @@ interface Language {
   name: string;
 }
 
+/* OLD GEMINI INTERFACES - KEPT FOR BACKUP
 interface GeminiResponse {
   candidates?: Array<{
     content?: {
@@ -52,6 +53,7 @@ interface GeminiError {
     message?: string;
   };
 }
+*/
 
 // Define types for better type safety
 type ConverterType = 'length' | 'weight' | 'temperature';
@@ -487,6 +489,16 @@ const MiniTranslator = () => {
   const [sourceLang, setSourceLang] = useState<string>('ja');
   const [targetLang, setTargetLang] = useState<string>('en');
   const [isTranslating, setIsTranslating] = useState<boolean>(false);
+
+  const languages: Language[] = [
+    { code: 'en', name: 'English' },
+    { code: 'ja', name: 'Japanese' },
+  ];
+
+  /* ========================================
+   * OLD GEMINI API CODE (KEPT FOR BACKUP)
+   * ======================================== */
+  /*
   const [currentKeyIndex, setCurrentKeyIndex] = useState<number>(0);
   const [keyStatus, setKeyStatus] = useState<{[key: number]: {
     isBlocked: boolean;
@@ -495,11 +507,6 @@ const MiniTranslator = () => {
     requestCount: number;
     windowStart: number;
   }}>({});
-
-  const languages: Language[] = [
-    { code: 'en', name: 'English' },
-    { code: 'ja', name: 'Japanese' },
-  ];
 
   // Rate limit configurations (conservative estimates for Gemini free tier)
   const RATE_LIMITS = {
@@ -537,7 +544,10 @@ const MiniTranslator = () => {
   };
 
   const apiKeys = getApiKeys();
+  */
 
+  /* 
+  // OLD GEMINI HELPER FUNCTIONS - KEPT FOR BACKUP
   const getLanguageName = (code: string): string => {
     return languages.find((lang: Language) => lang.code === code)?.name || code;
   };
@@ -715,73 +725,48 @@ const MiniTranslator = () => {
     }
   };
 
+  ========================== END OF OLD GEMINI CODE ==========================
+  */
+
+  // ========================================
+  // NEW CLOUDFLARE AI IMPLEMENTATION
+  // ========================================
+
   const translateText = async (): Promise<void> => {
     if (!sourceText.trim()) return;
     
-    if (apiKeys.length === 0) {
-      setTranslatedText('No API keys found. Please set VITE_APP_GEMINI_API_KEY (and optionally VITE_APP_GEMINI_API_KEY_1, VITE_APP_GEMINI_API_KEY_2, etc.) in your environment variables.');
-      return;
-    }
-    
     setIsTranslating(true);
-    
-    // Initialize all key statuses
-    for (let i = 0; i < apiKeys.length; i++) {
-      initializeKeyStatus(i);
-    }
-    
-    const availableKeyIndex = getNextAvailableKey();
-    
-    if (availableKeyIndex === null) {
-      const statusSummary = getKeyStatusSummary();
-      const oldestBlockedKey = Object.entries(keyStatus)
-        .filter(([_, status]) => status.isBlocked)
-        .sort(([_, a], [__, b]) => a.blockedUntil - b.blockedUntil)[0];
-      
-      const waitTime = oldestBlockedKey 
-        ? Math.ceil((oldestBlockedKey[1].blockedUntil - Date.now()) / 1000)
-        : 60;
-      
-      setTranslatedText(`All ${apiKeys.length} API keys are currently rate-limited. Next key available in ~${waitTime}s. Status: ${statusSummary.blocked} blocked, ${statusSummary.nearLimit} near limit.`);
-      setIsTranslating(false);
-      return;
-    }
+    setTranslatedText('');
     
     try {
-      
-      const apiKey = apiKeys[availableKeyIndex];
-      const translation = await translateWithKey(apiKey);
-      
-      // Mark key as used successfully
-      updateKeyStatus(availableKeyIndex, false);
-      setCurrentKeyIndex(availableKeyIndex);
-      setTranslatedText(translation);
-      
+      // Call backend translation API
+      const response = await fetch('https://backend.carlo587-jcl.workers.dev/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: sourceText,
+          sourceLang: sourceLang,
+          targetLang: targetLang
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Translation failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setTranslatedText(data.translated_text);
       
     } catch (error: unknown) {
       const errorMessage: string = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Translation error:', error);
       
-      if (errorMessage === 'RATE_LIMIT') {
-        // Mark this key as rate-limited and try another
-        updateKeyStatus(availableKeyIndex, true);
-        
-        // Try to find another available key
-        const nextKeyIndex = getNextAvailableKey();
-        if (nextKeyIndex !== null && nextKeyIndex !== availableKeyIndex) {
-          setIsTranslating(false);
-          setTimeout(() => translateText(), 100); // Small delay before retry
-          return;
-        } else {
-          const statusSummary = getKeyStatusSummary();
-          setTranslatedText(`API key ${availableKeyIndex + 1} hit rate limit. All keys currently rate-limited. Status: ${statusSummary.blocked} blocked, ${statusSummary.available} available.`);
-        }
+      if (errorMessage.includes('429') || errorMessage.includes('rate limit')) {
+        setTranslatedText('⚠️ Rate limit exceeded. Please try again in a moment.');
       } else {
-        // Handle other errors
-        if (errorMessage.includes('API_KEY_INVALID')) {
-          setTranslatedText(`Invalid API key ${availableKeyIndex + 1}. Please check your Gemini API keys in environment variables.`);
-        } else {
-          setTranslatedText(`Translation failed: ${errorMessage}`);
-        }
+        setTranslatedText(`⚠️ Translation failed: ${errorMessage}`);
       }
     }
     
@@ -807,17 +792,13 @@ const MiniTranslator = () => {
     setTargetLang(e.target.value);
   };
 
-  const statusSummary = getKeyStatusSummary();
-
   return (
     <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl p-6 border border-white/20 mb-8">
       <h3 className="text-xl font-bold text-gray-800 mb-4">
-        Google Translate
-        {apiKeys.length > 1 && (
-          <span className="text-sm font-normal text-gray-600 ml-2">
-            ({apiKeys.length} keys: {statusSummary.available} available, {statusSummary.blocked} cooling down)
-          </span>
-        )}
+        Translator
+        <span className="text-sm font-normal text-gray-600 ml-2">
+          (Powered by Cloudflare AI)
+        </span>
       </h3>
       
       <div className="flex flex-col md:flex-row gap-4 mb-4">
@@ -865,8 +846,7 @@ const MiniTranslator = () => {
               <div className="flex items-center justify-center h-full">
                 <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-200 border-t-blue-600"></div>
                 <span className="ml-2 text-gray-600">
-                  Translating...
-                  {apiKeys.length > 1 && ` (${statusSummary.available}/${apiKeys.length} keys ready)`}
+                  Translating with Cloudflare AI...
                 </span>
               </div>
             ) : (

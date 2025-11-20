@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { 
-  AIChatRequest, 
+  AIChatRequest,
   AIChatResponse, 
   ConversationMessage 
 } from '../types/aiChat';
@@ -9,7 +9,7 @@ import type {
 const API_BASE_URL = 'https://backend.carlo587-jcl.workers.dev';
 
 class AIChatService {
-  // Send a message to the AI and get a response
+  // Send a message to the AI and get a response (using backend)
   async sendMessage(
     query: string, 
     conversationHistory?: ConversationMessage[]

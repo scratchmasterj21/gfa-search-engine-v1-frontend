@@ -1,4 +1,4 @@
-// AI Service for Gemini API integration
+// AI Service for Cloudflare Workers AI integration (was Gemini)
 interface AIResponse {
   answer: string;
   sources: string[];
@@ -52,6 +52,7 @@ class AIService {
     /^cache:/i
   ];
 
+  /* OLD GEMINI API KEY MANAGEMENT - KEPT FOR BACKUP
   // Get all API keys from environment variables
   private getApiKeys(): string[] {
     const keys: string[] = [];
@@ -78,6 +79,7 @@ class AIService {
 
     return keys;
   }
+  */
 
   // Detect if query contains Japanese characters
   private isJapaneseQuery(query: string): boolean {
@@ -224,6 +226,9 @@ class AIService {
     });
   }
 
+  /* ========================================
+   * OLD GEMINI API CODE (KEPT FOR BACKUP)
+   * ========================================
   // Generate AI response using Gemini API
   private async generateAIResponse(query: string, apiKey: string): Promise<AIResponse> {
     // Detect if the query is in Japanese
@@ -328,6 +333,116 @@ SOURCES: [source 1, source 2, source 3]`;
       throw new Error('No response received from Gemini');
     }
   }
+  ========================== END OF OLD GEMINI CODE ==========================
+  */
+
+  // ========================================
+  // NEW BACKEND CLOUDFLARE AI IMPLEMENTATION
+  // ========================================
+  
+  // Generate AI response using backend Cloudflare Workers AI
+  private async generateAIResponse(query: string): Promise<AIResponse> {
+    // Detect if the query is in Japanese
+    const isJapanese = this.isJapaneseQuery(query);
+    
+    const systemPrompt = isJapanese ? 
+      `あなたは役立つアシスタントです。以下の質問に対して、包括的で正確で役立つ回答を日本語で提供してください。
+
+要件:
+1. 明確で構造化された回答を提供する
+2. 簡潔だが情報豊富である（2-4文を目標とする）
+3. 特定のトピックに関する質問の場合は、主要な事実を提供する
+4. 「方法」に関する質問の場合は、段階的なガイダンスを提供する
+5. 比較に関する質問の場合は、主要な違いを強調する
+6. 回答の最後に「参考情報:」を付けて、2-3の関連するトピックを提供する
+
+重要な制限事項:
+- 成人向けコンテンツ、性的な内容、ポルノ、アダルト関連の質問には一切回答しないでください
+- 性的な用語、身体部位、性的行為に関する質問には回答しないでください
+- そのような質問の場合は「申し訳ございませんが、この質問にはお答えできません」と回答してください
+
+回答形式:
+[ここに回答]
+
+参考情報: [トピック1, トピック2, トピック3]` :
+      
+      `You are a helpful assistant. Please provide a comprehensive, accurate, and helpful answer to the following question.
+
+Requirements:
+1. Give a clear, well-structured answer
+2. Be concise but informative (aim for 2-4 sentences)
+3. If the question is about a specific topic, provide key facts
+4. If it's a "how to" question, provide step-by-step guidance
+5. If it's a comparison question, highlight key differences
+6. End your response with "Related topics:" followed by 2-3 relevant topics
+
+Important restrictions:
+- Do NOT answer questions related to adult content, sexual content, pornography, or any adult-related topics
+- Do NOT answer questions about sexual terms, body parts, or sexual activities
+- If the question is about such content, respond with "I'm sorry, but I cannot answer that question"
+
+Format your response as:
+[your answer here]
+
+Related topics: [topic 1, topic 2, topic 3]`;
+
+    try {
+      // Call backend API
+      const response = await fetch('https://backend.carlo587-jcl.workers.dev/ai-simple', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          systemPrompt
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Backend error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const answer = data.answer;
+      
+      // Parse the response
+      const sourcesPattern = isJapanese ? 
+        /参考情報[：:]\s*(.*?)$/s : 
+        /Related topics[：:]\s*(.*?)$/s;
+      
+      const sourcesMatch = answer.match(sourcesPattern);
+      const mainAnswer = sourcesMatch ? 
+        answer.substring(0, sourcesMatch.index).trim() : 
+        answer.trim();
+      
+      const sourcesText = sourcesMatch ? sourcesMatch[1].trim() : '';
+      const sources = sourcesText ? 
+        sourcesText.split(',').map((s: string) => s.trim()).filter((s: string) => s) : 
+        [];
+      
+      // Calculate confidence based on response quality
+      let confidence = 0.8; // Base confidence
+      if (mainAnswer.length < 50) confidence -= 0.2; // Too short
+      if (sources.length === 0) confidence -= 0.1; // No sources
+      if (mainAnswer.includes('I don\'t know') || 
+          mainAnswer.includes('I cannot') ||
+          mainAnswer.includes('申し訳ございません') ||
+          mainAnswer.includes('お答えできません')) {
+        confidence -= 0.3; // Uncertain response
+      }
+      
+      return {
+        answer: mainAnswer,
+        sources,
+        confidence: Math.max(0.1, Math.min(1.0, confidence)),
+        query,
+        timestamp: new Date()
+      };
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to generate AI response');
+    }
+  }
 
   // Main method to get AI response
   async getAIResponse(query: string): Promise<AIResponse | null> {
@@ -342,26 +457,15 @@ SOURCES: [source 1, source 2, source 3]`;
       return cached;
     }
 
-    const apiKeys = this.getApiKeys();
-    if (apiKeys.length === 0) {
-      return null;
+    try {
+      // Generate AI response using Cloudflare Workers AI
+      const response = await this.generateAIResponse(query);
+      this.setCachedResponse(query, response);
+      return response;
+    } catch (error) {
+      // Throw error to be handled by caller
+      throw error;
     }
-
-    // Try each API key until one works
-    for (let i = 0; i < apiKeys.length; i++) {
-      try {
-        const response = await this.generateAIResponse(query, apiKeys[i]);
-        this.setCachedResponse(query, response);
-        return response;
-      } catch (error) {
-        if (i === apiKeys.length - 1) {
-          // All keys failed
-          throw error;
-        }
-      }
-    }
-
-    return null;
   }
 
   // Clear cache
