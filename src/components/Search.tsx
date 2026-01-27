@@ -1130,8 +1130,15 @@ const MiniConverter = () => {
       await initializeDeviceRegistration();
       const blocked = await isDeviceSearchBlocked();
       setIsSearchBlocked(blocked);
+      
+      // If blocked and URL has AI Mode, switch to web
+      if (blocked && initialSearchType === 'ai') {
+        setSearchType('web');
+        setSearchParams({ query: initialQuery, searchType: 'web' });
+      }
     };
     initializeApp();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -1535,6 +1542,13 @@ const MiniConverter = () => {
 
 
   const handleTabChange = (type: 'web' | 'image' | 'ai') => {
+    // Prevent switching to AI Mode if search is blocked
+    if (type === 'ai' && isSearchBlocked) {
+      setErrorMessage('AI Mode is disabled when search is blocked on this device.');
+      triggerHaptic('medium');
+      return; // Don't switch
+    }
+    
     setSearchType(type);
     
     // AI Mode doesn't need traditional search results
@@ -1722,12 +1736,24 @@ const MiniConverter = () => {
                 }`}>
                   <button
                     onClick={() => {
+                      if (isSearchBlocked && searchType !== 'ai') {
+                        setErrorMessage('AI Mode is disabled when search is blocked on this device.');
+                        triggerHaptic('medium');
+                        return;
+                      }
                       setSearchType(searchType === 'ai' ? 'web' : 'ai');
                       triggerHaptic('light');
                     }}
+                    disabled={isSearchBlocked && searchType !== 'ai'}
                     className={`
                       group flex items-center gap-2 px-4 py-2 rounded-full
-                      transition-all duration-300 hover-scale touch-feedback
+                      transition-all duration-300 touch-feedback
+                      ${isSearchBlocked && searchType !== 'ai'
+                        ? 'opacity-50 cursor-not-allowed'
+                        : searchType === 'ai'
+                          ? 'hover-scale'
+                          : 'hover-scale'
+                      }
                       ${searchType === 'ai'
                         ? actualTheme === 'dark'
                           ? 'bg-gradient-to-r from-purple-600 to-cyan-600 text-white shadow-glow'
@@ -1737,6 +1763,7 @@ const MiniConverter = () => {
                           : 'bg-white/90 text-gray-700 hover:bg-gray-50 border border-gray-300 shadow-sm'
                       }
                     `}
+                    title={isSearchBlocked && searchType !== 'ai' ? 'AI Mode is disabled when search is blocked on this device' : ''}
                   >
                     <svg 
                       className={`w-4 h-4 ${searchType === 'ai' ? 'animate-pulse' : ''}`}
@@ -1806,7 +1833,35 @@ const MiniConverter = () => {
 
               {/* AI Mode - Full takeover when active */}
               {searchType === 'ai' && (
-                <AIMode initialQuery={query} />
+                isSearchBlocked ? (
+                  <div className="max-w-2xl mx-auto mb-8 animate-slide-in-from-top">
+                    <div className="glass-heavy border-l-4 border-red-400 p-8 rounded-3xl shadow-depth-4 border border-red-200/30 hover-lift">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center shadow-depth-2">
+                            <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="ml-6 flex-1">
+                          <p className="text-red-300 font-bold text-xl">AI Mode Disabled</p>
+                          <p className="text-red-200 text-base mt-2 font-medium">
+                            AI Mode is disabled when search is blocked on this device. Please contact support if you believe this is an error.
+                          </p>
+                          <button
+                            onClick={() => handleTabChange('web')}
+                            className="mt-4 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-depth-2 hover-lift"
+                          >
+                            Return to Web Search
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <AIMode initialQuery={query} />
+                )
               )}
 
               {/* Loading State - Only show for web/image search (not AI mode) */}
