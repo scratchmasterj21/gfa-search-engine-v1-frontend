@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { useSearchParams } from 'react-router-dom';
-import { logSearch, initializeDeviceRegistration, isDeviceSearchBlocked } from './firebase'; // Import the logging function
+import { logSearch, initializeDeviceRegistration, isDeviceSearchBlocked, getGoogleUserInfo, type GoogleUserInfo } from './firebase';
+import { isChromebookOrDesktop } from '../utils/deviceDetection';
+import GoogleSignIn from './GoogleSignIn';
 import { useTheme } from '../contexts/ThemeContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { useTouchGestures, useHapticFeedback } from '../hooks/useTouchGestures';
@@ -103,6 +105,8 @@ const Search: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<SearchResult | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isSearchBlocked, setIsSearchBlocked] = useState<boolean>(false);
+  const [showGoogleSignInModal, setShowGoogleSignInModal] = useState(false);
+  const [googleUser, setGoogleUser] = useState<GoogleUserInfo | null>(null);
   
   // AI-related state
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
@@ -1130,7 +1134,10 @@ const MiniConverter = () => {
       await initializeDeviceRegistration();
       const blocked = await isDeviceSearchBlocked();
       setIsSearchBlocked(blocked);
-      
+      if (isChromebookOrDesktop()) {
+        const user = await getGoogleUserInfo();
+        setGoogleUser(user);
+      }
       // If blocked and URL has AI Mode, switch to web
       if (blocked && initialSearchType === 'ai') {
         setSearchType('web');
@@ -1183,9 +1190,19 @@ const MiniConverter = () => {
   }, []);
 
 
+  // Require Google Sign-In to search on Chromebook/desktop when client ID is configured
+  const signInRequired = isChromebookOrDesktop() && !!import.meta.env.VITE_GOOGLE_CLIENT_ID && !googleUser;
+
   // Create a helper function that accepts the query and search type as parameters
   const performSearchWithQuery = useCallback(async (searchQuery: string, page: number, isLoadMore = false, searchTypeParam?: 'web' | 'image') => {
     if (!searchQuery) return;
+
+    // Require sign-in on Chromebook/desktop before any search
+    if (signInRequired) {
+      setErrorMessage('Please sign in with Google to search on this device.');
+      setShowGoogleSignInModal(true);
+      return;
+    }
 
     // Check if device search is blocked (real-time check)
     const currentlyBlocked = await isDeviceSearchBlocked();
@@ -1338,7 +1355,7 @@ const MiniConverter = () => {
         setLoading(false);
       }
     }
-  }, [searchType, loading, loadingMore, setSearchParams, handleAIResponse, isSearchBlocked]);
+  }, [searchType, loading, loadingMore, setSearchParams, handleAIResponse, isSearchBlocked, signInRequired, googleUser]);
 
   // Update the original performSearch to use the new helper
   const performSearch = useCallback(async (page: number, isLoadMore = false) => {
@@ -1548,6 +1565,13 @@ const MiniConverter = () => {
       triggerHaptic('medium');
       return; // Don't switch
     }
+    // Require sign-in for AI Mode on Chromebook/desktop
+    if (type === 'ai' && signInRequired) {
+      setErrorMessage('Please sign in with Google to use AI Mode.');
+      setShowGoogleSignInModal(true);
+      triggerHaptic('medium');
+      return; // Don't switch
+    }
     
     setSearchType(type);
     
@@ -1679,25 +1703,65 @@ const MiniConverter = () => {
               <div className="flex-1" />
               <div className="flex-1 flex justify-center">
                 <a href="/" className="block group">
-                  <div className="relative">
+                  <div className="relative inline-flex items-center justify-center px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-sm shadow-lg ring-1 ring-white/10">
                     <img 
                       src="https://i.imgur.com/QTNsUY1.png" 
-                      alt="Google Logo" 
-                      className={`w-auto cursor-pointer transition-all duration-300 group-hover:scale-110 drop-shadow-2xl ${
+                      alt="Gunma Felice Academy" 
+                      className={`w-auto cursor-pointer transition-all duration-300 group-hover:scale-105 drop-shadow-lg [filter:drop-shadow(0_1px_2px_rgba(0,0,0,0.8))] ${
                         isMobile 
                           ? isPortrait 
-                            ? 'h-12' 
-                            : 'h-8'
+                            ? 'h-14' 
+                            : 'h-10'
                           : isTablet 
-                            ? 'h-16' 
-                            : 'h-20'
+                            ? 'h-20' 
+                            : 'h-24'
                       }`}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-cyan-400/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-cyan-400/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm pointer-events-none" />
                   </div>
                 </a>
               </div>
-              <div className="flex-1 flex justify-end">
+              <div className="flex-1 flex justify-end items-center gap-2">
+                {isChromebookOrDesktop() && import.meta.env.VITE_GOOGLE_CLIENT_ID && !googleUser && (
+                  <button
+                    type="button"
+                    onClick={() => setShowGoogleSignInModal(true)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      actualTheme === 'dark'
+                        ? 'text-gray-300 hover:bg-gray-700/80'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    Sign in
+                  </button>
+                )}
+                {isChromebookOrDesktop() && googleUser && (
+                  <div
+                    className="flex items-center gap-2 min-w-0 max-w-[180px]"
+                    title={googleUser.email || googleUser.name || 'Signed in'}
+                  >
+                    {googleUser.picture ? (
+                      <img
+                        src={googleUser.picture}
+                        alt=""
+                        className="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-white/50 shadow-md object-cover"
+                      />
+                    ) : (
+                      <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-medium ${
+                        actualTheme === 'dark' ? 'bg-gray-600 text-gray-200' : 'bg-gray-300 text-gray-700'
+                      }`}>
+                        {(googleUser.name || googleUser.email || '?').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span
+                      className={`text-sm font-medium truncate ${
+                        actualTheme === 'dark' ? 'text-gray-200' : 'text-gray-800'
+                      }`}
+                    >
+                      {googleUser.name || googleUser.email || 'Signed in'}
+                    </span>
+                  </div>
+                )}
                 <ThemeToggle />
               </div>
             </div>
@@ -1797,6 +1861,40 @@ const MiniConverter = () => {
                 </div>
               </div>
 
+              {/* Sign-in required (Chromebook/desktop) - show when not signed in */}
+              {signInRequired && searchType !== 'ai' && (
+                <div className="max-w-2xl mx-auto mb-6 animate-slide-in-from-top">
+                  <div className={`glass-heavy border-l-4 p-6 rounded-2xl shadow-depth-4 ${
+                    actualTheme === 'dark'
+                      ? 'border-amber-400/50 border border-amber-200/20'
+                      : 'border-amber-500/50 border border-amber-300/30'
+                  }`}>
+                    <div className="flex items-center gap-4">
+                      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                        actualTheme === 'dark' ? 'bg-amber-500/20' : 'bg-amber-500/30'
+                      }`}>
+                        <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-semibold ${actualTheme === 'dark' ? 'text-amber-200' : 'text-amber-800'}`}>Sign in to search</p>
+                        <p className={`text-sm mt-0.5 ${actualTheme === 'dark' ? 'text-amber-200/80' : 'text-amber-700'}`}>
+                          Sign in with Google to search on this device.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowGoogleSignInModal(true)}
+                        className="flex-shrink-0 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-all"
+                      >
+                        Sign in
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Search Blocked Message */}
               {isSearchBlocked && (
                 <div className="max-w-2xl mx-auto mb-8 animate-slide-in-from-top">
@@ -1854,6 +1952,38 @@ const MiniConverter = () => {
                             className="mt-4 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-depth-2 hover-lift"
                           >
                             Return to Web Search
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : signInRequired ? (
+                  <div className="max-w-2xl mx-auto mb-8 animate-slide-in-from-top">
+                    <div className={`glass-heavy border-l-4 p-8 rounded-3xl shadow-depth-4 hover-lift ${
+                      actualTheme === 'dark'
+                        ? 'border-amber-400/50 border border-amber-200/20'
+                        : 'border-amber-500/50 border border-amber-300/30'
+                    }`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+                        <div className="flex-shrink-0">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-depth-2 ${
+                            actualTheme === 'dark' ? 'bg-amber-500/20' : 'bg-amber-500/30'
+                          }`}>
+                            <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <p className={`font-bold text-xl ${actualTheme === 'dark' ? 'text-amber-200' : 'text-amber-800'}`}>Sign in to use AI Mode</p>
+                          <p className={`text-base mt-2 font-medium ${actualTheme === 'dark' ? 'text-amber-200/80' : 'text-amber-700'}`}>
+                            Sign in with Google to use AI Mode on this device.
+                          </p>
+                          <button
+                            onClick={() => setShowGoogleSignInModal(true)}
+                            className="mt-4 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold transition-all shadow-depth-2 hover-lift"
+                          >
+                            Sign in with Google
                           </button>
                         </div>
                       </div>
@@ -2124,6 +2254,15 @@ const MiniConverter = () => {
           </div>
           </PullToRefresh>
         </div>
+        <GoogleSignIn
+          showModal={showGoogleSignInModal}
+          onCloseModal={() => setShowGoogleSignInModal(false)}
+          onSignInSuccess={async () => {
+            const user = await getGoogleUserInfo();
+            setGoogleUser(user);
+          }}
+          theme={actualTheme === 'dark' ? 'dark' : 'light'}
+        />
     </ResponsiveLayout>
   );
 };

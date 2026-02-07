@@ -1,6 +1,6 @@
 // firebase.ts
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, push, serverTimestamp, set, get } from 'firebase/database';
+import { getDatabase, ref, push, serverTimestamp, set, get, update } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -205,11 +205,85 @@ export const isDeviceSearchBlocked = async (): Promise<boolean> => {
   }
 };
 
+// Google Sign-In: user info stored on device registry and user registry
+export interface GoogleUserInfo {
+  googleId: string;
+  email: string | null;
+  name: string | null;
+  picture: string | null;
+  signedInAt: string;
+}
+
+/** Save Google user to device registry and user registry (Chromebook/desktop only). */
+export const saveGoogleUserInfo = async (user: GoogleUserInfo): Promise<void> => {
+  try {
+    const deviceId = await getDeviceId();
+    if (!deviceId) return;
+
+    const now = new Date().toISOString();
+    const deviceRef = ref(database, `deviceRegistry/${deviceId}`);
+    const userRef = ref(database, `users/${user.googleId}`);
+
+    const deviceUpdate: Record<string, unknown> = {
+      googleUser: {
+        googleId: user.googleId,
+        email: user.email ?? null,
+        name: user.name ?? null,
+        picture: user.picture ?? null,
+        signedInAt: user.signedInAt
+      },
+      lastSeen: now
+    };
+
+    const userDevicesPayload: Record<string, unknown> = {
+      [`devices/${deviceId}/signedInAt`]: user.signedInAt,
+      [`devices/${deviceId}/lastSeen`]: now,
+      email: user.email ?? null,
+      name: user.name ?? null,
+      picture: user.picture ?? null,
+      updatedAt: now
+    };
+
+    await update(deviceRef, deviceUpdate);
+
+    const userSnapshot = await get(userRef);
+    if (!userSnapshot.exists()) {
+      await set(userRef, {
+        email: user.email ?? null,
+        name: user.name ?? null,
+        picture: user.picture ?? null,
+        devices: { [deviceId]: { signedInAt: user.signedInAt, lastSeen: now } },
+        updatedAt: now
+      });
+    } else {
+      await update(userRef, userDevicesPayload);
+    }
+  } catch (error) {
+    console.warn('Failed to save Google user info:', error);
+  }
+};
+
+/** Get Google user for current device (from device registry). */
+export const getGoogleUserInfo = async (): Promise<GoogleUserInfo | null> => {
+  try {
+    const deviceId = await getDeviceId();
+    if (!deviceId) return null;
+    const deviceRef = ref(database, `deviceRegistry/${deviceId}`);
+    const snapshot = await get(deviceRef);
+    const data = snapshot.val();
+    return data?.googleUser ?? null;
+  } catch (error) {
+    console.warn('Failed to get Google user info:', error);
+    return null;
+  }
+};
+
 // Search logging function
 // Search logging function - Updated to include full results data
 export const logSearch = async (query: string, searchType: 'web' | 'image', originalResults: any[]) => {
   try {
     const deviceId = await getDeviceId();
+    const googleUser = await getGoogleUserInfo();
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -234,7 +308,7 @@ export const logSearch = async (query: string, searchType: 'web' | 'image', orig
       url: item.link || item.url
     }));
     
-    const logData = {
+    const logData: Record<string, unknown> = {
       date: formattedDate, // MM/DD/YYYY HH:MM:SS format
       deviceId: deviceId,
       query: query,
@@ -243,6 +317,11 @@ export const logSearch = async (query: string, searchType: 'web' | 'image', orig
       timestamp: serverTimestamp(),
       userAgent: navigator.userAgent
     };
+    if (googleUser) {
+      logData.googleId = googleUser.googleId;
+      logData.googleEmail = googleUser.email;
+      logData.googleName = googleUser.name;
+    }
     
     await push(searchLogRef, logData);
   } catch (error) {
@@ -297,7 +376,8 @@ export const logAIChat = async (
     // Format date as MM/DD/YYYY HH:MM:SS
     const formattedDate = `${month}/${day}/${year} ${now.toTimeString().split(' ')[0]}`;
     
-    const logData = {
+    const googleUser = await getGoogleUserInfo();
+    const logData: Record<string, unknown> = {
       // Basic Info
       date: formattedDate,
       deviceId: deviceId,
@@ -338,6 +418,11 @@ export const logAIChat = async (
       timestamp: serverTimestamp(),
       userAgent: navigator.userAgent
     };
+    if (googleUser) {
+      logData.googleId = googleUser.googleId;
+      logData.googleEmail = googleUser.email;
+      logData.googleName = googleUser.name;
+    }
     
     await push(aiChatLogRef, logData);
     console.log('AI chat logged successfully');
