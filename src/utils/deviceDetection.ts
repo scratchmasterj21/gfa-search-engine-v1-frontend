@@ -18,8 +18,13 @@ export function isChromebookOrDesktop(): boolean {
   // Only treat as iPad when UA explicitly says iPad (avoid flagging Mac desktops with trackpads)
   const isIPad = /iPad/.test(userAgent);
 
-  // Desktop: not mobile and not iPad (Mac, Windows, Linux)
-  const isDesktop = !isMobile && !isIPad && window.innerWidth >= 768;
+  // Detect touch-primary devices (tablets pretending to be desktop, e.g. iPad in "Request Desktop Website" mode)
+  // iPad in desktop mode has maxTouchPoints = 5 (touch-only)
+  // Mac desktop with trackpad has maxTouchPoints = 0-2 (mouse-primary)
+  const isTouchPrimary = navigator.maxTouchPoints >= 5;
+
+  // Desktop: not mobile, not iPad, not touch-primary, and wide enough (Mac, Windows, Linux)
+  const isDesktop = !isMobile && !isIPad && !isTouchPrimary && window.innerWidth >= 768;
 
   return isChromebook || isDesktop;
 }
