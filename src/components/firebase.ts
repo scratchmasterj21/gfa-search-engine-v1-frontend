@@ -1,6 +1,7 @@
 // firebase.ts
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, push, serverTimestamp, set, get, update } from 'firebase/database';
+import { isChromebookOrDesktop } from '../utils/deviceDetection';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -145,17 +146,47 @@ export const generateDeviceId = (): string => {
   return 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now().toString(36);
 };
 
+// Firebase RTDB keys cannot contain `. # $ [ ] /` or control characters.
+const FIREBASE_ILLEGAL_KEY_CHARS = /[.#$\[\]/\u0000-\u001F\u007F]/g;
+
+// MDM injects the device UUID into the page URL as ?deviceId=...
+export const getDeviceIdFromUrl = (): string | null => {
+  try {
+    const raw = new URLSearchParams(window.location.search).get('deviceId');
+    if (!raw) return null;
+    const cleaned = raw.trim().replace(FIREBASE_ILLEGAL_KEY_CHARS, '');
+    return cleaned.length > 0 ? cleaned : null;
+  } catch (error) {
+    console.warn('Failed to read deviceId from URL:', error);
+    return null;
+  }
+};
+
 export const getDeviceId = async (): Promise<string> => {
-  // Try to get existing device ID from any storage
+  // 1. MDM-provided ID via URL param is authoritative, but ONLY for managed
+  //    mobile/tablet devices. Desktop and Chromebook use Google login instead,
+  //    so the URL override is skipped there.
+  if (!isChromebookOrDesktop()) {
+    const urlDeviceId = getDeviceIdFromUrl();
+    if (urlDeviceId) {
+      const storedId = await getDeviceIdFromAllStorages();
+      if (storedId !== urlDeviceId) {
+        // Persist so the MDM ID survives in-app navigation that drops the URL param
+        await saveDeviceIdToAllStorages(urlDeviceId);
+      }
+      return urlDeviceId;
+    }
+  }
+
+  // 2. Existing on-device storage
   let deviceId = await getDeviceIdFromAllStorages();
-  
+
+  // 3. Generate random only if nothing is found
   if (!deviceId) {
-    // Generate new device ID if none found
     deviceId = generateDeviceId();
-    // Save to all storage methods
     await saveDeviceIdToAllStorages(deviceId);
   }
-  
+
   return deviceId;
 };
 
