@@ -43,8 +43,9 @@ export default {
       },
       // Enhanced Typography
       fontFamily: {
-        'display': ['Inter', 'system-ui', 'sans-serif'],
-        'body': ['Inter', 'system-ui', 'sans-serif'],
+        'display': ['"Baloo 2"', 'Nunito', 'system-ui', 'sans-serif'],
+        'body': ['Nunito', 'system-ui', 'sans-serif'],
+        'sans': ['Nunito', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         'xs': ['0.75rem', { lineHeight: '1.2' }],

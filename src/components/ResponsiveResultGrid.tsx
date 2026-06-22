@@ -110,9 +110,13 @@ const ResponsiveResultGrid: React.FC<ResponsiveResultGridProps> = ({
     return (
       <div className={getContainerClasses()}>
         <div className="text-center py-16">
-          <div className="text-6xl mb-4">🔍</div>
-          <h3 className="text-xl font-semibold text-gray-600 mb-2">No results found</h3>
-          <p className="text-gray-500">Try adjusting your search terms</p>
+          <img
+            src="/mascot.png"
+            alt="Our friendly helper"
+            className="w-24 h-24 mx-auto mb-4 drop-shadow-lg"
+          />
+          <h3 className="font-display text-2xl font-bold text-gray-700 mb-2">Nothing found yet!</h3>
+          <p className="text-gray-500 text-lg">Try different words for what you want to find!</p>
         </div>
       </div>
     );

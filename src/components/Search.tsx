@@ -34,6 +34,67 @@ interface SearchResult {
   source?: string;
 }
 
+// Backend base URL (Cloudflare Worker).
+const BACKEND_URL = 'https://backend.carlo587-jcl.workers.dev';
+
+interface FriendlyMessage {
+  emoji: string;
+  title: string;
+  message: string;
+  tone: 'gentle' | 'error';
+}
+
+// Translate a raw search failure into kid-friendly, distinct guidance. The backend
+// sends different signals (400 blocked, 404 filtered/empty, limit reached, 5xx), which
+// we map here so a child never sees a raw backend/axios string.
+function getFriendlyError(error: unknown): FriendlyMessage {
+  let status: number | undefined;
+  let backendError = '';
+  if (axios.isAxiosError(error)) {
+    status = error.response?.status;
+    backendError = String(error.response?.data?.error || '').toLowerCase();
+  }
+
+  if (status === 400 && backendError.includes('inappropriate')) {
+    return {
+      emoji: '🌈',
+      title: "Let's try a different search!",
+      message: "That search isn't allowed here. Try looking for something else fun to learn about!",
+      tone: 'gentle',
+    };
+  }
+  if (status === 404 && backendError.includes('filtered')) {
+    return {
+      emoji: '🔎',
+      title: "Hmm, we couldn't find safe results",
+      message: 'Try using different words for what you want to find!',
+      tone: 'gentle',
+    };
+  }
+  if (status === 404) {
+    return {
+      emoji: '🤔',
+      title: 'Nothing found yet!',
+      message: "We couldn't find anything for that. Try different words!",
+      tone: 'gentle',
+    };
+  }
+  if (backendError.includes('limit')) {
+    return {
+      emoji: '🎉',
+      title: "You've reached the end!",
+      message: "That's all the results we have. Try a new search!",
+      tone: 'gentle',
+    };
+  }
+  return {
+    emoji: '🛠️',
+    title: 'Oops! Something broke',
+    message: "We had a little trouble searching. Let's try again in a moment!",
+    tone: 'error',
+  };
+}
+
 interface Language {
   code: string;
   name: string;
@@ -102,6 +163,7 @@ const Search: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [tabsVisible, setTabsVisible] = useState(initialQuery !== '');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [searchError, setSearchError] = useState<FriendlyMessage | null>(null);
   const [selectedImage, setSelectedImage] = useState<SearchResult | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isSearchBlocked, setIsSearchBlocked] = useState<boolean>(false);
@@ -117,6 +179,9 @@ const Search: React.FC = () => {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const mainContainerRef = useRef<HTMLDivElement | null>(null);
+  const isLoadingMoreRef = useRef<boolean>(false);
+  const suggestDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suggestAbortRef = useRef<AbortController | null>(null);
 
   // Touch gestures for mobile
   const { handleTouchStart, handleTouchEnd } = useTouchGestures({
@@ -1195,12 +1260,14 @@ const MiniConverter = () => {
 
   // Create a helper function that accepts the query and search type as parameters
   const performSearchWithQuery = useCallback(async (searchQuery: string, page: number, isLoadMore = false, searchTypeParam?: 'web' | 'image') => {
-    if (!searchQuery) return;
+    // Any early return below must release the load-more lock to avoid a permanent stall.
+    if (!searchQuery) { isLoadingMoreRef.current = false; return; }
 
     // Require sign-in on Chromebook/desktop before any search
     if (signInRequired) {
       setErrorMessage('Please sign in with Google to search on this device.');
       setShowGoogleSignInModal(true);
+      isLoadingMoreRef.current = false;
       return;
     }
 
@@ -1212,6 +1279,7 @@ const MiniConverter = () => {
       setAiResponse(null); // Clear AI response
       setAiError(null); // Clear AI error
       setErrorMessage(null); // Clear any existing error messages
+      isLoadingMoreRef.current = false;
       return;
     }
 
@@ -1220,6 +1288,7 @@ const MiniConverter = () => {
 
     // Prevent multiple simultaneous requests using state
     if (loading || loadingMore) {
+      isLoadingMoreRef.current = false;
       return;
     }
 
@@ -1230,6 +1299,9 @@ const MiniConverter = () => {
     }
     
     setErrorMessage(null);
+    if (!isLoadMore) {
+      setSearchError(null);
+    }
 
     // Trigger AI response for new searches (not pagination)
     if (!isLoadMore) {
@@ -1257,7 +1329,7 @@ const MiniConverter = () => {
 
 
       const response = await axios.get<{ items: any[] }>(
-        `https://backend.carlo587-jcl.workers.dev/search`,
+        `${BACKEND_URL}/search`,
         {
           params: {
             query: searchQuery,
@@ -1326,12 +1398,10 @@ const MiniConverter = () => {
     
 
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        setErrorMessage(error.response?.data?.error || error.message || 'An unexpected error occurred.');
-      } else if (error instanceof Error) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage('An unknown error occurred.');
+      // Map to friendly, distinct guidance (blocked vs empty vs server error).
+      // Don't surface a prominent error for "load more" failures.
+      if (!isLoadMore) {
+        setSearchError(getFriendlyError(error));
       }
       
       // Log the search even if it failed (for new searches only, not pagination)
@@ -1351,6 +1421,8 @@ const MiniConverter = () => {
     } finally {
       if (isLoadMore) {
         setLoadingMore(false);
+        // Release the synchronous lock that prevents double-fired load-more.
+        isLoadingMoreRef.current = false;
       } else {
         setLoading(false);
       }
@@ -1363,10 +1435,14 @@ const MiniConverter = () => {
   }, [query, performSearchWithQuery]);
 
   const loadMoreResults = useCallback(() => {
-    if (!hasMore || loading || loadingMore) {
+    // Synchronous ref guard: the `loadingMore` state updates asynchronously, so the
+    // IntersectionObserver and scroll listener could otherwise both fire in one tick
+    // and load (and append) the same page twice.
+    if (!hasMore || loading || loadingMore || isLoadingMoreRef.current) {
       return;
     }
-    
+    isLoadingMoreRef.current = true;
+
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
     performSearch(nextPage, true);
@@ -1511,9 +1587,19 @@ const MiniConverter = () => {
     };
   }, [selectedImage]);
 
-  // Auto-suggest functionality
-  const handleQueryChange = useCallback(async (newQuery: string) => {
+  // Auto-suggest functionality. Debounced (~250ms) and routed through the Worker
+  // /suggest proxy so the RapidAPI key never ships in the client bundle. In-flight
+  // requests are cancelled when the user keeps typing.
+  const handleQueryChange = useCallback((newQuery: string) => {
     setQuery(newQuery);
+
+    // Cancel any pending debounce/in-flight request from prior keystrokes.
+    if (suggestDebounceRef.current) {
+      clearTimeout(suggestDebounceRef.current);
+    }
+    if (suggestAbortRef.current) {
+      suggestAbortRef.current.abort();
+    }
 
     if (newQuery.trim() === '') {
       setSuggestions([]);
@@ -1529,19 +1615,23 @@ const MiniConverter = () => {
       `${newQuery} tutorial`
     ];
 
-    try {
-      const response = await axios.get('https://auto-suggest-queries.p.rapidapi.com/suggestqueries', {
-        params: { query: newQuery },
-        headers: {
-          'X-RapidAPI-Key': import.meta.env.VITE_APP_RAPIDAPI_KEY || '',
-          'X-RapidAPI-Host': import.meta.env.VITE_APP_RAPIDAPI_HOST || ''
+    suggestDebounceRef.current = setTimeout(async () => {
+      const controller = new AbortController();
+      suggestAbortRef.current = controller;
+      try {
+        const response = await axios.get(`${BACKEND_URL}/suggest`, {
+          params: { query: newQuery },
+          signal: controller.signal,
+        });
+        const data = response.data;
+        setSuggestions(Array.isArray(data) && data.length > 0 ? data : fallbackSuggestions);
+      } catch (error) {
+        // Ignore cancellations; use fallback suggestions for real failures.
+        if (!axios.isCancel(error)) {
+          setSuggestions(fallbackSuggestions);
         }
-      });
-      setSuggestions(response.data || fallbackSuggestions);
-    } catch (error) {
-      // Use fallback suggestions when API fails
-      setSuggestions(fallbackSuggestions);
-    }
+      }
+    }, 250);
   }, []);
 
   const handleSearch = useCallback(() => {
@@ -1774,6 +1864,23 @@ const MiniConverter = () => {
               <div className={`relative transition-all duration-300 ${
                 isMobile ? 'mb-6' : 'mb-8'
               }`}>
+                {/* Friendly mascot greeting on the home screen (before any search) */}
+                {searchType !== 'ai' && !tabsVisible && !isSearchBlocked && (
+                  <div className="text-center mb-6 animate-fade-in">
+                    <img
+                      src="/mascot.png"
+                      alt="Our friendly helper"
+                      className="w-32 h-32 sm:w-40 sm:h-40 mx-auto mb-4 drop-shadow-lg animate-bounce-gentle"
+                    />
+                    <h1 className="font-display text-3xl sm:text-4xl font-bold text-white">
+                      Hi! What do you want to learn about?
+                    </h1>
+                    <p className="text-white/90 text-lg mt-2 font-medium">
+                      Type something below and let's explore together!
+                    </p>
+                  </div>
+                )}
+
                 {/* Hide Search Bar when AI Mode is active */}
                 {searchType !== 'ai' && (
                   <div className="animate-fade-in">
@@ -1783,7 +1890,7 @@ const MiniConverter = () => {
                       onSearch={handleSearchClick}
                       onFocus={() => {}}
                       onBlur={() => {}}
-                      placeholder="Search the universe..."
+                      placeholder="What do you want to learn about?"
                       suggestions={suggestions}
                       onSuggestionClick={handleSuggestionClick}
                       isLoading={loading}
@@ -2003,29 +2110,39 @@ const MiniConverter = () => {
                       <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-4 border-purple-400/50"></div>
                     </div>
                     <span className="text-white font-bold text-xl bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
-                      {searchType === 'image' ? 'Searching for images...' : 'Searching the cosmos...'}
+                      {searchType === 'image' ? 'Finding pictures...' : 'Looking for answers...'}
                     </span>
                     <PulsingDots count={3} color="white" className="mt-2" />
                   </div>
                 </div>
               )}
 
-              {/* Enhanced Error Message - Only for web/image search */}
+              {/* Friendly search state - blocked / empty / server error (web/image only) */}
+              {searchType !== 'ai' && searchError && !loading && (
+                <div className="max-w-2xl mx-auto mb-8 animate-slide-in-from-top">
+                  <div className={`glass-heavy p-8 rounded-3xl shadow-depth-4 border hover-lift text-center ${
+                    searchError.tone === 'error' ? 'border-red-200/30 border-l-4 border-l-red-400' : 'border-white/30'
+                  }`}>
+                    <img
+                      src="/mascot.png"
+                      alt="Our friendly helper"
+                      className="w-24 h-24 mx-auto mb-4 drop-shadow-lg"
+                    />
+                    <p className="text-white font-display font-bold text-2xl">
+                      <span className="mr-2">{searchError.emoji}</span>{searchError.title}
+                    </p>
+                    <p className="text-white/90 text-lg mt-3 font-medium">{searchError.message}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Sign-in / mode notices - Only for web/image search */}
               {searchType !== 'ai' && errorMessage && (
                 <div className="max-w-2xl mx-auto mb-8 animate-slide-in-from-top">
-                  <div className="glass-heavy border-l-4 border-red-400 p-8 rounded-3xl shadow-depth-4 border border-red-200/30 hover-lift">
-                    <div className="flex">
-                      <div className="flex-shrink-0">
-                        <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center shadow-depth-2">
-                          <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                          </svg>
-                        </div>
-                      </div>
-                      <div className="ml-6">
-                        <p className="text-red-300 font-bold text-xl">Houston, we have a problem</p>
-                        <p className="text-red-200 text-base mt-2 font-medium">{errorMessage}</p>
-                      </div>
+                  <div className="glass-heavy border-l-4 border-amber-400 p-8 rounded-3xl shadow-depth-4 border border-amber-200/30 hover-lift">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 text-3xl mr-5">👋</div>
+                      <p className="text-white text-lg font-medium">{errorMessage}</p>
                     </div>
                   </div>
                 </div>
@@ -2062,7 +2179,7 @@ const MiniConverter = () => {
                       <div className="absolute inset-0 animate-ping rounded-full h-12 w-12 border-4 border-purple-400/50"></div>
                     </div>
                     <span className="text-white font-medium bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
-                      Loading search results...
+                      Looking for answers...
                     </span>
                   </div>
                 </div>
@@ -2101,7 +2218,7 @@ const MiniConverter = () => {
                       <div className="flex items-center">
                         <CheckIcon className="w-6 h-6 mr-4 text-purple-400" animated />
                         <span className="font-bold text-lg">
-                          {results.length >= 100 ? 'Reached maximum results (100)' : 'No more results found'}
+                          {results.length >= 100 ? "That's all 100 results!" : "That's everything we found!"}
                         </span>
                       </div>
                     </div>
@@ -2114,7 +2231,7 @@ const MiniConverter = () => {
                     }`}>
                       <div className="flex items-center">
                         <ArrowDownIcon className="w-5 h-5 mr-3 text-cyan-400" animated />
-                        <span className="font-semibold text-base">Scroll for more cosmic discoveries</span>
+                        <span className="font-semibold text-base">Scroll down for more!</span>
                       </div>
                       <div className="text-sm opacity-70 mt-2">
                         Page {currentPage} • {results.length} results

@@ -24,7 +24,7 @@ const ResponsiveSearchBar: React.FC<ResponsiveSearchBarProps> = ({
   onSearch,
   onFocus,
   onBlur,
-  placeholder = "Search the universe...",
+  placeholder = "What do you want to learn about?",
   suggestions = [],
   onSuggestionClick,
   isLoading = false,
