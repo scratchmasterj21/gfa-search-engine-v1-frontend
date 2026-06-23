@@ -399,6 +399,21 @@ Related topics: [topic 1, topic 2, topic 3]`;
         })
       });
 
+      // 400 = backend moderation blocked the query. Surface a gentle refusal instead of
+      // throwing, so the AI answer card shows a kid-friendly message.
+      if (response.status === 400) {
+        const refusal = isJapanese
+          ? '申し訳ございませんが、この質問にはお答えできません。'
+          : "I'm sorry, but I can't help with that. Let's try a different question!";
+        return {
+          answer: refusal,
+          sources: [],
+          confidence: 0.1,
+          query,
+          timestamp: new Date()
+        };
+      }
+
       if (!response.ok) {
         throw new Error(`Backend error: ${response.status}`);
       }

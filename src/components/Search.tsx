@@ -826,7 +826,12 @@ const MiniTranslator = () => {
       }
 
       const data = await response.json();
-      setTranslatedText(data.translated_text);
+      // Backend returns an empty string when the text (or its translation) is filtered.
+      if (!data.translated_text) {
+        setTranslatedText("Let's try translating something else!");
+      } else {
+        setTranslatedText(data.translated_text);
+      }
       
     } catch (error: unknown) {
       const errorMessage: string = error instanceof Error ? error.message : 'Unknown error occurred';
