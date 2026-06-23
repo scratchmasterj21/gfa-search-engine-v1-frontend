@@ -79,6 +79,14 @@ function getFriendlyError(error: unknown): FriendlyMessage {
       tone: 'gentle',
     };
   }
+  if (status === 429) {
+    return {
+      emoji: '🐢',
+      title: 'Whoa, slow down a little!',
+      message: "You're searching super fast! Wait a few seconds and try again.",
+      tone: 'gentle',
+    };
+  }
   if (backendError.includes('limit')) {
     return {
       emoji: '🎉',
