@@ -50,5 +50,7 @@ export interface AIChatResponse {
   confidence: number;
   tokensUsed?: number;
   processingTime: number;
+  // True when the backend swapped the generated answer for a safety refusal.
+  refused?: boolean;
 }
 

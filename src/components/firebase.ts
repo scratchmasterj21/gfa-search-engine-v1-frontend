@@ -359,6 +359,51 @@ export const logSearch = async (query: string, searchType: 'web' | 'image', orig
   }
 };
 
+// Reason a search attempt was flagged for safeguarding review.
+export type FlaggedReason = 'inappropriate' | 'filtered' | 'device_blocked';
+
+// Records a blocked/filtered search attempt to a dedicated `flaggedSearches` node so the
+// dashboard can review safeguarding concerns separately from normal (0-result) searches.
+// Best-effort: never throws into the search flow.
+export const logFlaggedSearch = async (
+  query: string,
+  searchType: 'web' | 'image' | 'images' | 'ai',
+  reason: FlaggedReason
+): Promise<void> => {
+  try {
+    const deviceId = await getDeviceId();
+    if (!deviceId) return;
+
+    const googleUser = await getGoogleUserInfo();
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+
+    const flaggedRef = ref(database, `flaggedSearches/${year}/${month}/${day}`);
+    const formattedDate = `${month}/${day}/${year} ${now.toTimeString().split(' ')[0]}`;
+
+    const logData: Record<string, unknown> = {
+      date: formattedDate,
+      deviceId,
+      query,
+      searchType,
+      reason,
+      timestamp: serverTimestamp(),
+      userAgent: navigator.userAgent
+    };
+    if (googleUser) {
+      logData.googleId = googleUser.googleId;
+      logData.googleEmail = googleUser.email;
+      logData.googleName = googleUser.name;
+    }
+
+    await push(flaggedRef, logData);
+  } catch (error) {
+    // Silent fail - safeguarding logging must never disrupt the child's experience.
+  }
+};
+
 // AI Chat logging function
 export interface AISource {
   id: string;
@@ -379,6 +424,7 @@ export interface AILogMetadata {
   processingTime: number;
   aiModel: string;
   wasRegenerated?: boolean;
+  wasRefused?: boolean;
 }
 
 export const logAIChat = async (
@@ -444,6 +490,7 @@ export const logAIChat = async (
       
       // User Actions
       wasRegenerated: metadata.wasRegenerated || false,
+      wasRefused: metadata.wasRefused || false,
       
       // Technical
       timestamp: serverTimestamp(),

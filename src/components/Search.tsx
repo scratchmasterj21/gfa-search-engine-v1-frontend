@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { useSearchParams } from 'react-router-dom';
-import { logSearch, initializeDeviceRegistration, isDeviceSearchBlocked, getGoogleUserInfo, type GoogleUserInfo } from './firebase';
+import { logSearch, logFlaggedSearch, initializeDeviceRegistration, isDeviceSearchBlocked, getGoogleUserInfo, type FlaggedReason, type GoogleUserInfo } from './firebase';
 import { isChromebookOrDesktop } from '../utils/deviceDetection';
 import GoogleSignIn from './GoogleSignIn';
 import { useTheme } from '../contexts/ThemeContext';
@@ -101,6 +101,17 @@ function getFriendlyError(error: unknown): FriendlyMessage {
     message: "We had a little trouble searching. Let's try again in a moment!",
     tone: 'error',
   };
+}
+
+// Classify a failed search into a safeguarding flag reason, or null if it's a benign
+// failure (genuine empty results, rate limit, server error) that shouldn't be flagged.
+function getFlagReason(error: unknown): FlaggedReason | null {
+  if (!axios.isAxiosError(error)) return null;
+  const status = error.response?.status;
+  const backendError = String(error.response?.data?.error || '').toLowerCase();
+  if (status === 400 && backendError.includes('inappropriate')) return 'inappropriate';
+  if (status === 404 && backendError.includes('filtered')) return 'filtered';
+  return null;
 }
 
 interface Language {
@@ -1178,7 +1189,7 @@ const MiniConverter = () => {
             type="number"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && convert()}
+            onKeyDown={(e) => e.key === 'Enter' && convert()}
             placeholder="Enter value to convert"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg"
           />
@@ -1424,6 +1435,12 @@ const MiniConverter = () => {
         try {
           await logSearch(searchQuery, currentSearchType, []);
         } catch (logError) {
+        }
+        // Additionally record a dedicated safeguarding flag for content blocks
+        // (inappropriate query / all-results-filtered), distinct from benign failures.
+        const flagReason = getFlagReason(error);
+        if (flagReason) {
+          await logFlaggedSearch(searchQuery, currentSearchType, flagReason);
         }
       }
       

@@ -107,7 +107,8 @@ const AIMode: React.FC<AIModeProps> = ({ initialQuery = '' }) => {
             tokensUsed: response.tokensUsed,
             processingTime: response.processingTime,
             aiModel: 'llama-3.1-8b-instruct',
-            wasRegenerated: isRegeneration
+            wasRegenerated: isRegeneration,
+            wasRefused: response.refused || false
           }
         );
       } catch (logError) {
